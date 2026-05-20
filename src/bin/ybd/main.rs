@@ -1,8 +1,12 @@
 mod app;
+mod clap_app;
 
 use std::process::ExitCode;
 
+use clap::Parser;
 use yumi_bilibili_download::error::*;
+
+use crate::clap_app::Cmd;
 
 fn main() -> ExitCode {
     let result = run();
@@ -14,5 +18,7 @@ fn main() -> ExitCode {
 }
 
 fn run() -> Result<bool> {
+    let cmd = Cmd::parse();
+    println!("{cmd:#?}");
     Ok(true)
 }
