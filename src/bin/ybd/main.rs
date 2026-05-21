@@ -1,5 +1,7 @@
 mod app;
 mod clap_app;
+mod config;
+mod directories;
 
 use std::process::ExitCode;
 
