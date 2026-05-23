@@ -5,7 +5,7 @@ pub enum Error {
     #[error("wrong path info: {0}")]
     Path(String),
     #[error("Configuration file parsing error: {0}")]
-    Parse(String),
+    Parse(#[from] serde_json::Error),
     #[error("IO error: {0}")]
     FetchIO(#[from] ::std::io::Error),
     #[error("unknown error")]
@@ -15,7 +15,10 @@ pub enum Error {
 pub type Result<T> = std::result::Result<T, Error>;
 
 pub fn default_error_handler(error: Error) {
-    eprintln!("An error occured in yumi-bilibili-download\n{}", error);
+    eprintln!(
+        "\n\tAn error occured in yumi-bilibili-download\n\t{}\n",
+        error
+    );
 }
 
 #[test]

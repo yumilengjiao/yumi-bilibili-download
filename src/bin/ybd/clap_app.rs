@@ -1,4 +1,5 @@
-use clap::{Parser, ValueEnum};
+use clap::Parser;
+use yumi_bilibili_download::actuator::Mode;
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -14,11 +15,4 @@ pub struct Cmd {
     output: Option<String>,
     /// URL of the resources
     url: String,
-}
-
-#[derive(Debug, Clone, ValueEnum)]
-enum Mode {
-    Cover,
-    Audio,
-    Vedio,
 }

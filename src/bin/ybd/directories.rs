@@ -41,11 +41,11 @@ impl AppPath {
             env::current_dir().ok()?
         };
 
-        // 配置文件目录
+        // 配置文件地址
         let config_path = if let Some(os_config_path) = env::var_os("CONFIG_PATH") {
             PathBuf::from(os_config_path)
         } else {
-            base_dir.config_dir().join("ybd")
+            base_dir.config_dir().join("ybd").join("config.json")
         };
         Some(Self {
             vedio_dir,
