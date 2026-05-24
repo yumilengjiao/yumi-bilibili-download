@@ -24,8 +24,8 @@ async fn main() -> ExitCode {
 }
 
 async fn run() -> Result<bool> {
-    let app = App::new().await?;
-    println!("{app:#?}");
+    // let app = App::new().await?;
+    // // println!("{app:#?}");
     let cmd = Cmd::parse();
     println!("{cmd:#?}");
     Ok(true)
