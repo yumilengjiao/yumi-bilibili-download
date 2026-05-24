@@ -7,9 +7,11 @@ pub enum Error {
     #[error("Configuration file parsing error: {0}")]
     Parse(#[from] serde_json::Error),
     #[error("IO error: {0}")]
-    FetchIO(#[from] ::std::io::Error),
+    FetchIO(#[from] reqwest::Error),
     #[error("unknown error")]
     Unknown(),
+    #[error("norlmal error: {0}")]
+    Normal(String),
 }
 
 pub type Result<T> = std::result::Result<T, Error>;

@@ -1,7 +1,6 @@
 // 登录
 pub const LOGIN: &str = "https://passport.bilibili.com/x/passport-login/web/qrcode/generate";
-pub const VALIDATE_QRCODE: &str =
-    "https://passport.bilibili.com/x/passport-login/web/qrcode/poll?qrcode_key={qrcode_key}";
+pub const VALIDATE_QRCODE: &str = "https://passport.bilibili.com/x/passport-login/web/qrcode/poll";
 
 // WBI 签名密钥
 pub const WBI: &str = "https://api.bilibili.com/x/web-interface/nav";

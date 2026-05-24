@@ -1,15 +1,17 @@
-use yumi_bilibili_download::error::Result;
+use yumi_bilibili_download::{error::Result, login::Account};
 
 use crate::{config::Config, directories::APP_PATH};
 
 #[derive(Debug)]
 pub struct App {
     config: Config,
+    account: Account,
 }
 
 impl App {
-    pub fn new() -> Result<Self> {
+    pub async fn new() -> Result<Self> {
         let config = Config::new(Some(APP_PATH.config_path()))?;
-        Ok(App { config })
+        let account = Account::new().await?;
+        Ok(App { config, account })
     }
 }

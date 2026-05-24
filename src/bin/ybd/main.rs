@@ -12,7 +12,7 @@ use crate::{app::App, clap_app::Cmd};
 
 #[tokio::main]
 async fn main() -> ExitCode {
-    let result = run();
+    let result = run().await;
     match result {
         Ok(true) => ExitCode::SUCCESS,
         Ok(false) => ExitCode::FAILURE,
@@ -23,8 +23,8 @@ async fn main() -> ExitCode {
     }
 }
 
-fn run() -> Result<bool> {
-    let app = App::new()?;
+async fn run() -> Result<bool> {
+    let app = App::new().await?;
     println!("{app:#?}");
     let cmd = Cmd::parse();
     println!("{cmd:#?}");
