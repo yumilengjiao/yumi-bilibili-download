@@ -14,6 +14,7 @@ pub struct AppPath {
     audio_dir: PathBuf,
     cover_dir: PathBuf,
     config_path: PathBuf,
+    cache_auth_path: PathBuf,
 }
 
 impl AppPath {
@@ -47,11 +48,20 @@ impl AppPath {
         } else {
             base_dir.config_dir().join("ybd").join("config.json")
         };
+
+        // 个人信息缓存信息地址
+        let cache_auth_path = if let Some(os_config_path) = env::var_os("CONFIG_PATH") {
+            PathBuf::from(os_config_path)
+        } else {
+            base_dir.cache_dir().join("ybd").join("auth.json")
+        };
+
         Some(Self {
             vedio_dir,
             audio_dir,
             cover_dir,
             config_path,
+            cache_auth_path,
         })
     }
     pub fn vedio_dir(&self) -> &Path {
@@ -68,5 +78,9 @@ impl AppPath {
 
     pub fn config_path(&self) -> &Path {
         &self.config_path
+    }
+
+    pub fn cache_path(&self) -> &Path {
+        &self.cache_auth_path
     }
 }

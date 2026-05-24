@@ -1,32 +1,28 @@
+use std::{
+    num::ParseIntError,
+    time::{Duration, SystemTime},
+};
+
 use qrcode::{QrCode, render::unicode};
 use reqwest::Client;
 use serde_json::Value;
 
 use crate::{
     error::{Error, Result},
+    model::account::Account,
     url::{LOGIN, UA, VALIDATE_QRCODE, WBI},
 };
 
-#[derive(Debug)]
-pub struct Account {
-    sessdata: String,
-    client: Client,
-}
+const MIXIN_KEY_ENC_TAB: [usize; 64] = [
+    46, 47, 18, 2, 53, 8, 23, 32, 15, 50, 10, 31, 58, 3, 45, 35, 27, 43, 5, 49, 33, 9, 42, 19, 29,
+    28, 14, 39, 12, 38, 41, 13, 37, 48, 7, 16, 24, 55, 40, 61, 26, 17, 0, 1, 60, 51, 30, 4, 22, 25,
+    54, 21, 56, 59, 6, 63, 57, 62, 11, 36, 20, 34, 44, 52,
+];
 
-impl Account {
-    pub async fn new() -> Result<Self> {
-        let client = Client::builder()
-            .cookie_store(true)
-            .user_agent(UA)
-            .build()?;
-        let qrcode_key = generate_qrcode_and_get_qrcode_key(&client).await?;
-        let sessdata = query_login_state(&qrcode_key, &client).await?;
-        Ok(Self { sessdata, client })
-    }
-
-    pub fn get_sessdata(&self) -> &str {
-        &self.sessdata
-    }
+pub async fn get_account(client: &Client) -> Result<Account> {
+    let qrcode_key = generate_qrcode_and_get_qrcode_key(client).await?;
+    let (user_id, sessdata, exp) = query_login_state(&qrcode_key, client).await?;
+    Ok(Account::new(user_id, exp, sessdata))
 }
 
 /// 生成qrcode并获取qrcode_key用于轮训
@@ -49,12 +45,20 @@ async fn generate_qrcode_and_get_qrcode_key(client: &Client) -> Result<String> {
     Ok(qrcode_key)
 }
 
-/// 轮训查询QRCODE，即用户是否已经扫码登录
+/// 轮询查询QRCODE，即用户是否已经扫码登录
 /// 获取用户的SESSDATA
 ///
-/// * `qrcode_key`: qrcode
-/// * `client`: reqwest客户端
-async fn query_login_state(qrcode_key: &str, client: &Client) -> Result<String> {
+/// # Arguments
+/// * `qrcode_key` - qrcode key
+/// * `client` - reqwest客户端
+///
+/// # Returns
+/// * `Ok(String,String,SystemTime)` - 用户的ID,SESSDATA,时间戳
+/// * `Err(Error)` - 二维码过期或网络错误
+async fn query_login_state(
+    qrcode_key: &str,
+    client: &Client,
+) -> Result<(String, String, SystemTime)> {
     // 轮询登录状态
     loop {
         tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
@@ -69,8 +73,25 @@ async fn query_login_state(qrcode_key: &str, client: &Client) -> Result<String> 
 
         match resp["data"]["code"].as_i64().unwrap_or(-1) {
             0 => {
-                // 从返回的 URL 里提取 SESSDATA
                 let url = resp["data"]["url"].as_str().unwrap_or("");
+                let user_id = url
+                    .split("DedeUserID=")
+                    .nth(1)
+                    .unwrap_or("")
+                    .split("&")
+                    .next()
+                    .unwrap_or("")
+                    .to_string();
+
+                let exp = url
+                    .split("Expires")
+                    .nth(1)
+                    .unwrap_or("")
+                    .split("&")
+                    .next()
+                    .unwrap_or("")
+                    .to_string();
+
                 let sessdata = url
                     .split("SESSDATA=")
                     .nth(1)
@@ -80,7 +101,11 @@ async fn query_login_state(qrcode_key: &str, client: &Client) -> Result<String> 
                     .unwrap_or("")
                     .to_string();
                 println!("✓ 登录成功！\n");
-                return Ok(sessdata);
+                let ts: u64 = exp
+                    .parse::<u64>()
+                    .map_err(|e| Error::Normal(e.to_string()))?;
+                let exp = SystemTime::UNIX_EPOCH + Duration::from_secs(ts);
+                return Ok((user_id, sessdata, exp));
             }
             86101 => print!("\r等待扫码..."),
             86090 => print!("\r已扫码，请在手机上确认..."),
