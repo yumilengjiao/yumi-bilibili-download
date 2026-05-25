@@ -12,6 +12,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     actuator::download_audio(
         &biliclient,
         &resp.get_data()?,
+        None,
         Path::new("output/audio_example.m4a"),
     )
     .await?;

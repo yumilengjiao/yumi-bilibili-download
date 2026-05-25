@@ -9,7 +9,10 @@ use tokio::{fs::File, io};
 use crate::{
     client::BiliClient,
     error::{Error, Result},
-    model::video::VideoData,
+    model::{
+        quality::{AudioQuality, VideoEncode, VideoQuality},
+        video::VideoData,
+    },
     url::{UA, VIDEO_INFO, WBI},
 };
 
@@ -51,26 +54,31 @@ pub async fn download_cover(client: &Client, url: &str, path: &Path) -> Result<(
 ///
 /// * `bili_client`: 发送请求的带令牌的客户端
 /// * `video_data`: 视频元数据
+/// * `video_quality`: [视频分辨率],
+/// * `video_encode`: [视频编码格式],
 /// * `path`: 下载到的路径
 pub async fn download_video_with_no_audio(
     bili_client: &BiliClient,
     video_data: &VideoData,
+    video_quality: Option<VideoQuality>,
+    video_encode: Option<VideoEncode>,
     path: &Path,
 ) -> Result<()> {
     if path.is_dir() {
         return Err(Error::Path("路径不能是目录".into()));
     }
-
-    let url = match video_data.best_video_quality_url() {
-        Some(video) => video,
-        None => return Err(Error::Normal("没有找到视频".into())),
+    let url = if video_quality.is_some() || video_encode.is_some() {
+        video_data
+            .get_specified_video_url(video_quality, video_encode)
+            .ok_or(Error::Normal(
+                "无法获取指定分辨率或编码格式的视频资源".into(),
+            ))?
+    } else {
+        video_data
+            .best_video_quality_url()
+            .ok_or(Error::Normal("没有找到视频".into()))?
     };
-    let mut res = bili_client.get(url).send().await?;
-    let mut file = File::create(path).await?;
-    while let Some(chunk) = res.chunk().await? {
-        io::AsyncWriteExt::write_all(&mut file, &chunk).await?;
-    }
-    Ok(())
+    download_url(bili_client, url, path).await
 }
 
 /// 下载音频文件,内部逻辑与视频一致
@@ -81,22 +89,22 @@ pub async fn download_video_with_no_audio(
 pub async fn download_audio(
     bili_client: &BiliClient,
     video_data: &VideoData,
+    audio_quality: Option<AudioQuality>,
     path: &Path,
 ) -> Result<()> {
     if path.is_dir() {
         return Err(Error::Path("路径不能是目录".into()));
     }
 
-    let url = match video_data.best_audio_url() {
-        Some(audio) => audio,
-        None => return Err(Error::Normal("没有音频".into())),
+    let url = match audio_quality {
+        Some(aq) => video_data
+            .get_specified_audio_url(aq)
+            .ok_or(Error::Normal("无法获取指定音质的音频资源".into()))?,
+        None => video_data
+            .best_audio_url()
+            .ok_or(Error::Normal("没有找到音频".into()))?,
     };
-    let mut res = bili_client.get(url).send().await?;
-    let mut file = File::create(path).await?;
-    while let Some(chunk) = res.chunk().await? {
-        io::AsyncWriteExt::write_all(&mut file, &chunk).await?;
-    }
-    Ok(())
+    download_url(bili_client, url, path).await
 }
 
 /// 获取视频基本信息,基本信息不需要SESSDATA
@@ -187,4 +195,13 @@ pub async fn get_wbi_keys(client: &BiliClient) -> Result<(String, String)> {
         .to_string();
 
     Ok((img_key, sub_key))
+}
+
+async fn download_url(bili_client: &BiliClient, url: &str, path: &Path) -> Result<()> {
+    let mut res = bili_client.get(url).send().await?;
+    let mut file = File::create(path).await?;
+    while let Some(chunk) = res.chunk().await? {
+        io::AsyncWriteExt::write_all(&mut file, &chunk).await?;
+    }
+    Ok(())
 }

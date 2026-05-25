@@ -5,7 +5,7 @@ use yumi_bilibili_download::{client::BiliClient, login, model::video::PlayUrlRes
 async fn main() -> Result<(), Box<dyn Error>> {
     let account = login::get_account().await?;
     let bili_client = BiliClient::new(&account)?;
-    let bvid = "BV1JvPMedE5E";
+    let bvid = "BV1xLQNYfEEY";
     let resp = PlayUrlResponse::new(&bili_client, bvid).await?;
 
     let json_str = serde_json::to_string_pretty(&resp)?;

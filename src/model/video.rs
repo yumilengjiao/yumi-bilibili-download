@@ -16,10 +16,10 @@ use crate::url::VIDEO_DOWNLOAD_URL;
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PlayUrlResponse {
-    code: i64,
-    data: VideoData,
-    message: String,
-    ttl: i64,
+    pub code: i64,
+    pub data: VideoData,
+    pub message: String,
+    pub ttl: i64,
 }
 
 impl PlayUrlResponse {
@@ -108,32 +108,16 @@ impl VideoData {
         video_quality: Option<VideoQuality>,
         video_encode: Option<VideoEncode>,
     ) -> Option<&str> {
-        let accept_videos: Vec<&Video> = self
-            .dash
-            .video
-            .iter()
-            .filter(|v| self.accept_quality.contains(&v.id))
-            .collect();
         if video_quality.is_none() && video_encode.is_none() {
             return None;
         }
-        let vec_video1: Vec<&Video> = match video_quality {
-            Some(vq) => accept_videos
-                .iter()
-                .filter(|v| v.id == vq as i64)
-                .copied()
-                .collect(),
-            None => accept_videos,
-        };
-        let vec_video: Vec<&Video> = match video_encode {
-            Some(ve) => vec_video1
-                .iter()
-                .filter(|e| e.base_url.starts_with(ve.as_str()))
-                .copied()
-                .collect(),
-            None => vec_video1,
-        };
-        Some(&vec_video[0].base_url)
+        self.dash
+            .video
+            .iter()
+            .filter(|v| self.accept_quality.contains(&v.id))
+            .filter(|v| video_quality.is_none_or(|vq| v.id == vq as i64))
+            .find(|v| video_encode.is_none_or(|ve| v.codecs.starts_with(ve.as_str())))
+            .map(|v| v.base_url.as_str())
     }
 
     pub fn best_audio_url(&self) -> Option<&str> {
@@ -147,17 +131,26 @@ impl VideoData {
             .map(|v| v.base_url.as_str())
     }
 
-    pub fn get_specified_audio_url(&self, audio_quality: Option<AudioQuality>) -> Option<&str> {
-        let accept_videos: Vec<&Video> = self.dash.video.iter().collect();
-        let vec_video: Vec<&Video> = match audio_quality {
-            Some(aq) => accept_videos
+    pub fn get_specified_audio_url(&self, audio_quality: AudioQuality) -> Option<&str> {
+        match audio_quality {
+            AudioQuality::HiRes => self
+                .dash
+                .flac
+                .as_ref()
+                .map(|flac| flac.audio.base_url.as_str()),
+            AudioQuality::Dolby => self
+                .dash
+                .dolby
+                .as_ref()
+                .and_then(|db| db.audio.first())
+                .map(|a| a.base_url.as_str()),
+            _ => self
+                .dash
+                .audio
                 .iter()
-                .filter(|v| v.id == aq as i64)
-                .copied()
-                .collect(),
-            None => return None,
-        };
-        Some(&vec_video[0].base_url)
+                .find(|a| a.id == audio_quality as i64)
+                .map(|a| a.base_url.as_str()),
+        }
     }
 }
 
@@ -171,7 +164,7 @@ pub struct AutoQnResp {
 #[serde(rename_all = "camelCase")]
 pub struct Dash {
     pub audio: Vec<Audio>,
-    pub dolby: Dolby,
+    pub dolby: Option<Dolby>,
     pub duration: i64,
     pub flac: Option<Flac>,
     pub min_buffer_time: f64,
@@ -230,52 +223,14 @@ pub struct SegmentBase2 {
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Dolby {
-    pub audio: Value,
+    pub audio: Vec<Audio2>,
     #[serde(rename = "type")]
     pub type_field: i64,
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct Flac {
-    pub audio: Audio2,
-    pub display: bool,
-}
-
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
 pub struct Audio2 {
-    #[serde(rename = "SegmentBase")]
-    pub segment_base: SegmentBase3,
-    pub backup_url: Vec<String>,
-    #[serde(rename = "backup_url")]
-    pub backup_url2: Vec<String>,
-    pub bandwidth: i64,
-    pub base_url: String,
-    #[serde(rename = "base_url")]
-    pub base_url2: String,
-    pub codecid: i64,
-    pub codecs: String,
-    pub frame_rate: String,
-    #[serde(rename = "frame_rate")]
-    pub frame_rate2: String,
-    pub height: i64,
-    pub id: i64,
-    pub mime_type: String,
-    #[serde(rename = "mime_type")]
-    pub mime_type2: String,
-    pub sar: String,
-    #[serde(rename = "segment_base")]
-    pub segment_base2: SegmentBase4,
-    pub start_with_sap: i64,
-    #[serde(rename = "start_with_sap")]
-    pub start_with_sap2: i64,
-    pub width: i64,
-}
-
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct Video {
     #[serde(rename = "SegmentBase")]
     pub segment_base: SegmentBase3,
     pub backup_url: Vec<String>,
@@ -315,6 +270,107 @@ pub struct SegmentBase3 {
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SegmentBase4 {
+    #[serde(rename = "index_range")]
+    pub index_range: String,
+    pub initialization: String,
+}
+
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Flac {
+    pub audio: Audio3,
+    pub display: bool,
+}
+
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Audio3 {
+    #[serde(rename = "SegmentBase")]
+    pub segment_base: SegmentBase5,
+    pub backup_url: Vec<String>,
+    #[serde(rename = "backup_url")]
+    pub backup_url2: Vec<String>,
+    pub bandwidth: i64,
+    pub base_url: String,
+    #[serde(rename = "base_url")]
+    pub base_url2: String,
+    pub codecid: i64,
+    pub codecs: String,
+    pub frame_rate: String,
+    #[serde(rename = "frame_rate")]
+    pub frame_rate2: String,
+    pub height: i64,
+    pub id: i64,
+    pub mime_type: String,
+    #[serde(rename = "mime_type")]
+    pub mime_type2: String,
+    pub sar: String,
+    #[serde(rename = "segment_base")]
+    pub segment_base2: SegmentBase6,
+    pub start_with_sap: i64,
+    #[serde(rename = "start_with_sap")]
+    pub start_with_sap2: i64,
+    pub width: i64,
+}
+
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SegmentBase5 {
+    #[serde(rename = "Initialization")]
+    pub initialization: String,
+    pub index_range: String,
+}
+
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SegmentBase6 {
+    #[serde(rename = "index_range")]
+    pub index_range: String,
+    pub initialization: String,
+}
+
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Video {
+    #[serde(rename = "SegmentBase")]
+    pub segment_base: SegmentBase7,
+    pub backup_url: Vec<String>,
+    #[serde(rename = "backup_url")]
+    pub backup_url2: Vec<String>,
+    pub bandwidth: i64,
+    pub base_url: String,
+    #[serde(rename = "base_url")]
+    pub base_url2: String,
+    pub codecid: i64,
+    pub codecs: String,
+    pub frame_rate: String,
+    #[serde(rename = "frame_rate")]
+    pub frame_rate2: String,
+    pub height: i64,
+    pub id: i64,
+    pub mime_type: String,
+    #[serde(rename = "mime_type")]
+    pub mime_type2: String,
+    pub sar: String,
+    #[serde(rename = "segment_base")]
+    pub segment_base2: SegmentBase8,
+    pub start_with_sap: i64,
+    #[serde(rename = "start_with_sap")]
+    pub start_with_sap2: i64,
+    pub width: i64,
+}
+
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SegmentBase7 {
+    #[serde(rename = "Initialization")]
+    pub initialization: String,
+    pub index_range: String,
+}
+
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SegmentBase8 {
     #[serde(rename = "index_range")]
     pub index_range: String,
     pub initialization: String,
