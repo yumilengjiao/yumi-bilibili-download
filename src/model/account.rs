@@ -1,6 +1,10 @@
+//! 用户信息模块
+
 use std::time::SystemTime;
 
-#[derive(Debug)]
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Deserialize, Serialize)]
 pub struct Account {
     user_id: String,
     exp: SystemTime,

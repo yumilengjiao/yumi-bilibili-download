@@ -1,7 +1,4 @@
-use std::{
-    num::ParseIntError,
-    time::{Duration, SystemTime},
-};
+use std::time::{Duration, SystemTime};
 
 use qrcode::{QrCode, render::unicode};
 use reqwest::Client;
@@ -12,12 +9,6 @@ use crate::{
     model::account::Account,
     url::{LOGIN, UA, VALIDATE_QRCODE, WBI},
 };
-
-const MIXIN_KEY_ENC_TAB: [usize; 64] = [
-    46, 47, 18, 2, 53, 8, 23, 32, 15, 50, 10, 31, 58, 3, 45, 35, 27, 43, 5, 49, 33, 9, 42, 19, 29,
-    28, 14, 39, 12, 38, 41, 13, 37, 48, 7, 16, 24, 55, 40, 61, 26, 17, 0, 1, 60, 51, 30, 4, 22, 25,
-    54, 21, 56, 59, 6, 63, 57, 62, 11, 36, 20, 34, 44, 52,
-];
 
 pub async fn get_account(client: &Client) -> Result<Account> {
     let qrcode_key = generate_qrcode_and_get_qrcode_key(client).await?;
@@ -84,7 +75,7 @@ async fn query_login_state(
                     .to_string();
 
                 let exp = url
-                    .split("Expires")
+                    .split("Expires=")
                     .nth(1)
                     .unwrap_or("")
                     .split("&")
@@ -113,41 +104,4 @@ async fn query_login_state(
             code => println!("未知状态码: {}", code),
         }
     }
-}
-
-/// 获取wbi签名密钥
-///
-/// * `client`: reqwest客户端
-/// * `sessdata`: 会话令牌
-async fn get_wbi_keys(client: &Client, sessdata: &str) -> Result<(String, String)> {
-    let resp: Value = client
-        .get(WBI)
-        .header("Cookie", format!("SESSDATA={}", sessdata))
-        .send()
-        .await?
-        .json()
-        .await?;
-
-    let img_url = resp["data"]["wbi_img"]["img_url"]
-        .as_str()
-        .ok_or(Error::Normal("无法获取 img_url".into()))?;
-    let sub_url = resp["data"]["wbi_img"]["sub_url"]
-        .as_str()
-        .ok_or(Error::Normal("无法获取 sub_url".into()))?;
-
-    // 从 URL 中提取文件名（去掉路径和 .png 后缀）
-    let img_key = img_url
-        .split('/')
-        .last()
-        .unwrap_or("")
-        .trim_end_matches(".png")
-        .to_string();
-    let sub_key = sub_url
-        .split('/')
-        .last()
-        .unwrap_or("")
-        .trim_end_matches(".png")
-        .to_string();
-
-    Ok((img_key, sub_key))
 }

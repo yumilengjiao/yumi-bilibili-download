@@ -2,13 +2,18 @@ mod app;
 mod clap_app;
 mod config;
 mod directories;
+mod cache;
 
 use std::process::ExitCode;
 
 use clap::Parser;
-use yumi_bilibili_download::error::*;
+use yumi_bilibili_download::{actuator, error::*};
 
-use crate::{app::App, clap_app::Cmd};
+use crate::{
+    app::App,
+    clap_app::{Cmd, Commands},
+    directories::APP_PATH,
+};
 
 #[tokio::main]
 async fn main() -> ExitCode {
@@ -24,9 +29,20 @@ async fn main() -> ExitCode {
 }
 
 async fn run() -> Result<bool> {
-    // let app = App::new().await?;
-    // // println!("{app:#?}");
     let cmd = Cmd::parse();
-    println!("{cmd:#?}");
+    let app: App;
+    match cmd.subcommand {
+        Commands::Login => {
+            App::new(false).await?;
+        }
+        Commands::Download {
+            mode,
+            batch,
+            output,
+            url,
+        } => {
+            let app = App::new(true).await?;
+        }
+    }
     Ok(true)
 }

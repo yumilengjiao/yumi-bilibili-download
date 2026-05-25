@@ -5,11 +5,11 @@ use yumi_bilibili_download::actuator::Mode;
 #[command(version, about, long_about = None)]
 pub struct Cmd {
     #[command(subcommand)]
-    subcommand: Commands,
+    pub subcommand: Commands,
 }
 
 #[derive(Subcommand, Debug)]
-enum Commands {
+pub enum Commands {
     /// download subcommand
     Download {
         /// the type of resource
