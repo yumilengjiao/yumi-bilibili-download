@@ -91,15 +91,23 @@ pub struct VedioData {
 }
 
 impl VedioData {
-    pub fn best_video_quality(&self) -> Option<&Video> {
+    pub fn best_video_quality_url(&self) -> Option<&str> {
         self.dash
             .video
             .iter()
             .filter(|v| self.accept_quality.contains(&v.id))
             .max_by_key(|v| v.id)
+            .map(|v| v.base_url.as_str())
     }
-    pub fn best_audio(&self) -> Option<&Audio> {
-        self.dash.audio.iter().max_by_key(|a| a.id)
+    pub fn best_audio_url(&self) -> Option<&str> {
+        if let Some(flac) = &self.dash.flac {
+            return Some(&flac.audio.base_url);
+        }
+        self.dash
+            .audio
+            .iter()
+            .max_by_key(|a| a.id)
+            .map(|v| v.base_url.as_str())
     }
 }
 
@@ -115,7 +123,7 @@ pub struct Dash {
     pub audio: Vec<Audio>,
     pub dolby: Dolby,
     pub duration: i64,
-    pub flac: Value,
+    pub flac: Option<Flac>,
     pub min_buffer_time: f64,
     #[serde(rename = "min_buffer_time")]
     pub min_buffer_time2: f64,
@@ -175,6 +183,44 @@ pub struct Dolby {
     pub audio: Value,
     #[serde(rename = "type")]
     pub type_field: i64,
+}
+
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Flac {
+    pub audio: Audio2,
+    pub display: bool,
+}
+
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Audio2 {
+    #[serde(rename = "SegmentBase")]
+    pub segment_base: SegmentBase3,
+    pub backup_url: Vec<String>,
+    #[serde(rename = "backup_url")]
+    pub backup_url2: Vec<String>,
+    pub bandwidth: i64,
+    pub base_url: String,
+    #[serde(rename = "base_url")]
+    pub base_url2: String,
+    pub codecid: i64,
+    pub codecs: String,
+    pub frame_rate: String,
+    #[serde(rename = "frame_rate")]
+    pub frame_rate2: String,
+    pub height: i64,
+    pub id: i64,
+    pub mime_type: String,
+    #[serde(rename = "mime_type")]
+    pub mime_type2: String,
+    pub sar: String,
+    #[serde(rename = "segment_base")]
+    pub segment_base2: SegmentBase4,
+    pub start_with_sap: i64,
+    #[serde(rename = "start_with_sap")]
+    pub start_with_sap2: i64,
+    pub width: i64,
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]

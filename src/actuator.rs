@@ -47,8 +47,13 @@ pub async fn download_cover(client: &Client, url: &str, path: &Path) -> Result<(
     Ok(())
 }
 
-pub async fn download_audio(
-    client: &BiliClient,
+/// 下载视频文件,没有音频
+///
+/// * `bili_client`: 发送请求的带令牌的客户端
+/// * `vedio_data`: 视频元数据
+/// * `path`: 下载到的路径
+pub async fn download_vedio_with_no_audio(
+    bili_client: &BiliClient,
     vedio_data: &VedioData,
     path: &Path,
 ) -> Result<()> {
@@ -56,11 +61,37 @@ pub async fn download_audio(
         return Err(Error::Path("路径不能是目录".into()));
     }
 
-    let audio = match vedio_data.best_audio() {
-        Some(audio) => audio,
-        None => &vedio_data.dash.audio[0],
+    let url = match vedio_data.best_video_quality_url() {
+        Some(vedio) => vedio,
+        None => return Err(Error::Normal("没有找到视频".into())),
     };
-    let mut res = client.get(&audio.base_url).send().await?;
+    let mut res = bili_client.get(url).send().await?;
+    let mut file = File::create(path).await?;
+    while let Some(chunk) = res.chunk().await? {
+        io::AsyncWriteExt::write_all(&mut file, &chunk).await?;
+    }
+    Ok(())
+}
+
+/// 下载音频文件,内部逻辑与视频一致
+///
+/// * `bili_client`: 发送请求的带令牌的客户端
+/// * `vedio_data`: 视频元数据
+/// * `path`: 下载到的路径
+pub async fn download_audio(
+    bili_client: &BiliClient,
+    vedio_data: &VedioData,
+    path: &Path,
+) -> Result<()> {
+    if path.is_dir() {
+        return Err(Error::Path("路径不能是目录".into()));
+    }
+
+    let url = match vedio_data.best_audio_url() {
+        Some(audio) => audio,
+        None => return Err(Error::Normal("没有音频".into())),
+    };
+    let mut res = bili_client.get(url).send().await?;
     let mut file = File::create(path).await?;
     while let Some(chunk) = res.chunk().await? {
         io::AsyncWriteExt::write_all(&mut file, &chunk).await?;

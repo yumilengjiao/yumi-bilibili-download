@@ -139,8 +139,8 @@ impl Default for VideoRequestParamBuilder {
         Self {
             bvid: None,
             cid: None,
-            qn: Quality::FHD1080P, // 默认 1080P
-            fnval: Fnval::Dash,    // 默认 DASH
+            qn: Quality::FHD1080P,  // 默认 1080P
+            fnval: Fnval::DashFull, // 默认 DASH
             fourk: true,
             fnver: None, // 默认 "0"
         }
