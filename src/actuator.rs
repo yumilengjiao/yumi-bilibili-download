@@ -1,7 +1,10 @@
+use std::path::Path;
+
 use clap::ValueEnum;
 use regex::Regex;
 use reqwest::Client;
-use serde_json::Value;
+use serde_json::{Value, to_string};
+use tokio::{fs::File, io};
 
 use crate::{
     error::{Error, Result},
@@ -15,6 +18,24 @@ pub enum Mode {
     Vedio,
 }
 
+/// 下载视频封面
+///
+/// * `client`: reqwest请求客户端
+/// * `base_url`: 图片url
+/// * `path`: 下载到本地的路径
+/// * `sessdata`: 用户凭证
+pub async fn download_cover(client: &Client, url: &str, path: &Path) -> Result<()> {
+    if path.is_dir() {
+        return Err(Error::Path("路径不能是目录".into()));
+    }
+    let mut res = client.get(url).send().await?;
+    let mut file = File::create(path).await?;
+    while let Some(chunk) = res.chunk().await? {
+        io::AsyncWriteExt::write_all(&mut file, &chunk).await?;
+    }
+    Ok(())
+}
+
 /// 获取视频基本信息
 ///
 /// * `client`: reqwest请求客户端
@@ -23,16 +44,11 @@ pub enum Mode {
 ///
 /// # Retures
 ///
-/// (title, cid)
-pub async fn get_basic_video_info(
-    client: &Client,
-    bvid: &str,
-    sessdata: &str,
-) -> Result<(String, String)> {
+/// (title, pic, cid) -> 视频标题，视频封面url, 分p标识号
+pub async fn get_basic_video_info(client: &Client, bvid: &str) -> Result<(String, String, String)> {
     let resp: Value = client
         .get(VEDIO_INFO)
         .query(&[("bvid", bvid)])
-        .header("Cookie", format!("SESSDATA={}", sessdata))
         .send()
         .await?
         .json()
@@ -53,8 +69,12 @@ pub async fn get_basic_video_info(
         .as_i64()
         .ok_or_else(|| Error::Normal("无法获取 cid".into()))?
         .to_string();
+    let pic = resp["data"]["pic"]
+        .as_str()
+        .ok_or_else(|| Error::Normal("无法获取视频封面url".into()))?
+        .to_string();
 
-    Ok((title, cid))
+    Ok((title, pic, cid))
 }
 
 /// 提取bvid
