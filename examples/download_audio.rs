@@ -1,7 +1,7 @@
 use std::{error::Error, path::Path};
 
 use tokio::fs;
-use yumi_bilibili_download::{actuator, client::BiliClient, login, model::vedio::PlayUrlResponse};
+use yumi_bilibili_download::{actuator, client::BiliClient, login, model::video::PlayUrlResponse};
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
     let account = login::get_account().await?;

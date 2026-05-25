@@ -9,15 +9,15 @@ use tokio::{fs::File, io};
 use crate::{
     client::BiliClient,
     error::{Error, Result},
-    model::{param::VideoRequestParam, vedio::VedioData},
-    url::{UA, VEDIO_INFO, WBI},
+    model::video::VideoData,
+    url::{UA, VIDEO_INFO, WBI},
 };
 
 #[derive(Debug, Clone, ValueEnum)]
 pub enum Mode {
     Cover,
     Audio,
-    Vedio,
+    Video,
 }
 
 /// 下载视频封面
@@ -50,19 +50,19 @@ pub async fn download_cover(client: &Client, url: &str, path: &Path) -> Result<(
 /// 下载视频文件,没有音频
 ///
 /// * `bili_client`: 发送请求的带令牌的客户端
-/// * `vedio_data`: 视频元数据
+/// * `video_data`: 视频元数据
 /// * `path`: 下载到的路径
-pub async fn download_vedio_with_no_audio(
+pub async fn download_video_with_no_audio(
     bili_client: &BiliClient,
-    vedio_data: &VedioData,
+    video_data: &VideoData,
     path: &Path,
 ) -> Result<()> {
     if path.is_dir() {
         return Err(Error::Path("路径不能是目录".into()));
     }
 
-    let url = match vedio_data.best_video_quality_url() {
-        Some(vedio) => vedio,
+    let url = match video_data.best_video_quality_url() {
+        Some(video) => video,
         None => return Err(Error::Normal("没有找到视频".into())),
     };
     let mut res = bili_client.get(url).send().await?;
@@ -76,18 +76,18 @@ pub async fn download_vedio_with_no_audio(
 /// 下载音频文件,内部逻辑与视频一致
 ///
 /// * `bili_client`: 发送请求的带令牌的客户端
-/// * `vedio_data`: 视频元数据
+/// * `video_data`: 视频元数据
 /// * `path`: 下载到的路径
 pub async fn download_audio(
     bili_client: &BiliClient,
-    vedio_data: &VedioData,
+    video_data: &VideoData,
     path: &Path,
 ) -> Result<()> {
     if path.is_dir() {
         return Err(Error::Path("路径不能是目录".into()));
     }
 
-    let url = match vedio_data.best_audio_url() {
+    let url = match video_data.best_audio_url() {
         Some(audio) => audio,
         None => return Err(Error::Normal("没有音频".into())),
     };
@@ -112,7 +112,7 @@ pub async fn get_basic_video_info(bvid: &str) -> Result<(String, String, String)
     let client = Client::builder().user_agent(UA).build()?;
 
     let resp: Value = client
-        .get(VEDIO_INFO)
+        .get(VIDEO_INFO)
         .header("Referer", "https://www.bilibili.com")
         .query(&[("bvid", bvid)])
         .send()

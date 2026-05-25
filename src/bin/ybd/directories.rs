@@ -10,7 +10,7 @@ pub static APP_PATH: LazyLock<AppPath> =
     LazyLock::new(|| AppPath::new().expect("Unable to get home directory"));
 
 pub struct AppPath {
-    vedio_dir: PathBuf,
+    video_dir: PathBuf,
     audio_dir: PathBuf,
     cover_dir: PathBuf,
     config_path: PathBuf,
@@ -22,8 +22,8 @@ impl AppPath {
         let base_dir = etcetera::choose_base_strategy().ok()?;
 
         // 下载视频文件的默认下载目录
-        let vedio_dir = if let Some(os_vedio_path) = env::var_os("VEDIO_DIR") {
-            PathBuf::from(os_vedio_path)
+        let video_dir = if let Some(os_video_path) = env::var_os("VIDEO_DIR") {
+            PathBuf::from(os_video_path)
         } else {
             env::current_dir().ok()?
         };
@@ -36,7 +36,7 @@ impl AppPath {
         };
 
         // 下载封面文件的默认下载目录
-        let cover_dir = if let Some(os_cover_path) = env::var_os("VEDIO_DIR") {
+        let cover_dir = if let Some(os_cover_path) = env::var_os("VIDEO_DIR") {
             PathBuf::from(os_cover_path)
         } else {
             env::current_dir().ok()?
@@ -57,15 +57,15 @@ impl AppPath {
         };
 
         Some(Self {
-            vedio_dir,
+            video_dir,
             audio_dir,
             cover_dir,
             config_path,
             cache_auth_path,
         })
     }
-    pub fn vedio_dir(&self) -> &Path {
-        &self.vedio_dir
+    pub fn video_dir(&self) -> &Path {
+        &self.video_dir
     }
 
     pub fn audio_dir(&self) -> &Path {

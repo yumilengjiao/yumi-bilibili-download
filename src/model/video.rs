@@ -8,13 +8,16 @@ use crate::client::BiliClient;
 use crate::error::Error;
 use crate::error::Result;
 use crate::model::param::VideoRequestParamBuilder;
-use crate::url::VEDIO_DOWNLOAD_URL;
+use crate::model::quality::AudioQuality;
+use crate::model::quality::VideoEncode;
+use crate::model::quality::VideoQuality;
+use crate::url::VIDEO_DOWNLOAD_URL;
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PlayUrlResponse {
     code: i64,
-    data: VedioData,
+    data: VideoData,
     message: String,
     ttl: i64,
 }
@@ -26,11 +29,11 @@ impl PlayUrlResponse {
             .await?
             .build(bili_client)
             .await?;
-        let url = format!("{}?{}", VEDIO_DOWNLOAD_URL, vrp.to_query_string());
+        let url = format!("{}?{}", VIDEO_DOWNLOAD_URL, vrp.to_query_string());
         Ok(bili_client.get(&url).send().await?.json().await?)
     }
 
-    pub fn get_data(self) -> Result<VedioData> {
+    pub fn get_data(self) -> Result<VideoData> {
         self.valid()?;
         Ok(self.data)
     }
@@ -50,7 +53,7 @@ impl PlayUrlResponse {
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct VedioData {
+pub struct VideoData {
     #[serde(rename = "accept_description")]
     pub accept_description: Vec<String>,
     #[serde(rename = "accept_format")]
@@ -90,7 +93,7 @@ pub struct VedioData {
     pub view_info: Value,
 }
 
-impl VedioData {
+impl VideoData {
     pub fn best_video_quality_url(&self) -> Option<&str> {
         self.dash
             .video
@@ -99,6 +102,40 @@ impl VedioData {
             .max_by_key(|v| v.id)
             .map(|v| v.base_url.as_str())
     }
+
+    pub fn get_specified_video_url(
+        &self,
+        video_quality: Option<VideoQuality>,
+        video_encode: Option<VideoEncode>,
+    ) -> Option<&str> {
+        let accept_videos: Vec<&Video> = self
+            .dash
+            .video
+            .iter()
+            .filter(|v| self.accept_quality.contains(&v.id))
+            .collect();
+        if video_quality.is_none() && video_encode.is_none() {
+            return None;
+        }
+        let vec_video1: Vec<&Video> = match video_quality {
+            Some(vq) => accept_videos
+                .iter()
+                .filter(|v| v.id == vq as i64)
+                .copied()
+                .collect(),
+            None => accept_videos,
+        };
+        let vec_video: Vec<&Video> = match video_encode {
+            Some(ve) => vec_video1
+                .iter()
+                .filter(|e| e.base_url.starts_with(ve.as_str()))
+                .copied()
+                .collect(),
+            None => vec_video1,
+        };
+        Some(&vec_video[0].base_url)
+    }
+
     pub fn best_audio_url(&self) -> Option<&str> {
         if let Some(flac) = &self.dash.flac {
             return Some(&flac.audio.base_url);
@@ -108,6 +145,19 @@ impl VedioData {
             .iter()
             .max_by_key(|a| a.id)
             .map(|v| v.base_url.as_str())
+    }
+
+    pub fn get_specified_audio_url(&self, audio_quality: Option<AudioQuality>) -> Option<&str> {
+        let accept_videos: Vec<&Video> = self.dash.video.iter().collect();
+        let vec_video: Vec<&Video> = match audio_quality {
+            Some(aq) => accept_videos
+                .iter()
+                .filter(|v| v.id == aq as i64)
+                .copied()
+                .collect(),
+            None => return None,
+        };
+        Some(&vec_video[0].base_url)
     }
 }
 
