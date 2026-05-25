@@ -21,7 +21,7 @@ impl App {
         let account: Account = if is_login {
             load_user_from_file(APP_PATH.cache_path())?
         } else {
-            get_account(&client).await?
+            get_account().await?
         };
 
         Ok(App {

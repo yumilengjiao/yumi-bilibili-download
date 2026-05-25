@@ -5,7 +5,11 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
-use crate::error::{Error, Result};
+use crate::{
+    actuator::{get_basic_video_info, get_wbi_keys},
+    client::BiliClient,
+    error::{Error, Result},
+};
 
 const MIXIN_KEY_ENC_TAB: [usize; 64] = [
     46, 47, 18, 2, 53, 8, 23, 32, 15, 50, 10, 31, 58, 3, 45, 35, 27, 43, 5, 49, 33, 9, 42, 19, 29,
@@ -144,12 +148,13 @@ impl Default for VideoRequestParamBuilder {
 }
 
 impl VideoRequestParamBuilder {
-    pub fn new(bvid: impl Into<String>, cid: impl Into<String>) -> Self {
-        Self {
+    pub async fn new(bvid: &str) -> Result<Self> {
+        let (_, _, cid) = get_basic_video_info(bvid).await?;
+        Ok(Self {
             bvid: Some(bvid.into()),
-            cid: Some(cid.into()),
+            cid: Some(cid),
             ..Default::default()
-        }
+        })
     }
 
     pub fn qn(mut self, qn: Quality) -> Self {
@@ -173,13 +178,11 @@ impl VideoRequestParamBuilder {
         self
     }
 
-    pub fn build(
-        self,
-        img_key: impl Into<String>,
-        sub_key: impl Into<String>,
-    ) -> Result<VideoRequestParam> {
+    pub async fn build(self, bili_client: &BiliClient) -> Result<VideoRequestParam> {
         let bvid = self.bvid.ok_or(Error::Build("bvid".into()))?;
         let cid = self.cid.ok_or(Error::Build("cid".into()))?;
+
+        let (img_key, sub_key) = get_wbi_keys(bili_client).await?;
 
         let wbi = Wbi::new(img_key, sub_key);
 

@@ -4,8 +4,11 @@ use serde::Deserialize;
 use serde::Serialize;
 use serde_json::Value;
 
+use crate::client::BiliClient;
 use crate::error::Error;
 use crate::error::Result;
+use crate::model::param::VideoRequestParamBuilder;
+use crate::url::VEDIO_DOWNLOAD_URL;
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -17,6 +20,16 @@ pub struct PlayUrlResponse {
 }
 
 impl PlayUrlResponse {
+    pub async fn new(bili_client: &BiliClient, bvid: &str) -> Result<Self> {
+        // 这里构造的是视频请求参数,参数签名逻辑也封装在内
+        let vrp = VideoRequestParamBuilder::new(bvid)
+            .await?
+            .build(bili_client)
+            .await?;
+        let url = format!("{}?{}", VEDIO_DOWNLOAD_URL, vrp.to_query_string());
+        Ok(bili_client.get(&url).send().await?.json().await?)
+    }
+
     pub fn get_data(self) -> Result<VedioData> {
         self.valid()?;
         Ok(self.data)

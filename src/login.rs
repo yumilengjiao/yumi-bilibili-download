@@ -13,9 +13,10 @@ use crate::{
 /// 获取用户账户信息
 ///
 /// * `client`: reqwest客户端,用于发送请求
-pub async fn get_account(client: &Client) -> Result<Account> {
-    let qrcode_key = generate_qrcode_and_get_qrcode_key(client).await?;
-    let (user_id, sessdata, exp) = query_login_state(&qrcode_key, client).await?;
+pub async fn get_account() -> Result<Account> {
+    let client = Client::builder().user_agent(UA).build()?;
+    let qrcode_key = generate_qrcode_and_get_qrcode_key(&client).await?;
+    let (user_id, sessdata, exp) = query_login_state(&qrcode_key, &client).await?;
     Ok(Account::new(user_id, exp, sessdata))
 }
 

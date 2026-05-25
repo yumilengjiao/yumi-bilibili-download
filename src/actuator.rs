@@ -7,9 +7,10 @@ use serde_json::Value;
 use tokio::{fs::File, io};
 
 use crate::{
+    client::BiliClient,
     error::{Error, Result},
     model::{param::VideoRequestParam, vedio::VedioData},
-    url::{VEDIO_INFO, WBI},
+    url::{UA, VEDIO_INFO, WBI},
 };
 
 #[derive(Debug, Clone, ValueEnum)]
@@ -47,24 +48,19 @@ pub async fn download_cover(client: &Client, url: &str, path: &Path) -> Result<(
 }
 
 pub async fn download_audio(
-    client: &Client,
+    client: &BiliClient,
     vedio_data: &VedioData,
     path: &Path,
-    sessdata: &str,
 ) -> Result<()> {
     if path.is_dir() {
         return Err(Error::Path("路径不能是目录".into()));
     }
+
     let audio = match vedio_data.best_audio() {
         Some(audio) => audio,
         None => &vedio_data.dash.audio[0],
     };
-    let mut res = client
-        .get(&audio.base_url)
-        .header("Cookie", format!("SESSDATA={}", sessdata))
-        .header("Referer", "https://www.bilibili.com")
-        .send()
-        .await?;
+    let mut res = client.get(&audio.base_url).send().await?;
     let mut file = File::create(path).await?;
     while let Some(chunk) = res.chunk().await? {
         io::AsyncWriteExt::write_all(&mut file, &chunk).await?;
@@ -72,7 +68,7 @@ pub async fn download_audio(
     Ok(())
 }
 
-/// 获取视频基本信息
+/// 获取视频基本信息,基本信息不需要SESSDATA
 ///
 /// * `client`: reqwest请求客户端
 /// * `bvid`: 视频bv号
@@ -81,9 +77,12 @@ pub async fn download_audio(
 /// # Retures
 ///
 /// (title, pic, cid) -> 视频标题，视频封面url, 分p标识号
-pub async fn get_basic_video_info(client: &Client, bvid: &str) -> Result<(String, String, String)> {
+pub async fn get_basic_video_info(bvid: &str) -> Result<(String, String, String)> {
+    let client = Client::builder().user_agent(UA).build()?;
+
     let resp: Value = client
         .get(VEDIO_INFO)
+        .header("Referer", "https://www.bilibili.com")
         .query(&[("bvid", bvid)])
         .send()
         .await?
@@ -132,14 +131,8 @@ fn extract_bv_id(input: &str) -> Result<String> {
 /// # Retures
 ///
 /// (img_key, sub_key)
-pub async fn get_wbi_keys(client: &Client, sessdata: &str) -> Result<(String, String)> {
-    let resp: Value = client
-        .get(WBI)
-        .header("Cookie", format!("SESSDATA={}", sessdata))
-        .send()
-        .await?
-        .json()
-        .await?;
+pub async fn get_wbi_keys(client: &BiliClient) -> Result<(String, String)> {
+    let resp: Value = client.get(WBI).send().await?.json().await?;
 
     let img_url = resp["data"]["wbi_img"]["img_url"]
         .as_str()
