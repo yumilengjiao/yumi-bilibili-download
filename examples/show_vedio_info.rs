@@ -27,7 +27,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .json()
         .await?;
     let json_str = serde_json::to_string_pretty(&resp)?;
-    tokio::fs::write("resp.json", json_str).await?;
+    tokio::fs::write("output/resp.json", json_str).await?;
     println!("{resp:#?}");
     Ok(())
 }
