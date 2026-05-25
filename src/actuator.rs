@@ -3,11 +3,12 @@ use std::path::Path;
 use clap::ValueEnum;
 use regex::Regex;
 use reqwest::Client;
-use serde_json::{Value, to_string};
+use serde_json::Value;
 use tokio::{fs::File, io};
 
 use crate::{
     error::{Error, Result},
+    model::{param::VideoRequestParam, vedio::VedioData},
     url::{VEDIO_INFO, WBI},
 };
 
@@ -28,7 +29,42 @@ pub async fn download_cover(client: &Client, url: &str, path: &Path) -> Result<(
     if path.is_dir() {
         return Err(Error::Path("路径不能是目录".into()));
     }
+    let safe_path = path
+        .parent()
+        .unwrap_or(Path::new("."))
+        .join(sanitize_filename::sanitize(
+            path.file_name()
+                .unwrap_or_default()
+                .to_string_lossy()
+                .as_ref(),
+        ));
     let mut res = client.get(url).send().await?;
+    let mut file = File::create(safe_path).await?;
+    while let Some(chunk) = res.chunk().await? {
+        io::AsyncWriteExt::write_all(&mut file, &chunk).await?;
+    }
+    Ok(())
+}
+
+pub async fn download_audio(
+    client: &Client,
+    vedio_data: &VedioData,
+    path: &Path,
+    sessdata: &str,
+) -> Result<()> {
+    if path.is_dir() {
+        return Err(Error::Path("路径不能是目录".into()));
+    }
+    let audio = match vedio_data.best_audio() {
+        Some(audio) => audio,
+        None => &vedio_data.dash.audio[0],
+    };
+    let mut res = client
+        .get(&audio.base_url)
+        .header("Cookie", format!("SESSDATA={}", sessdata))
+        .header("Referer", "https://www.bilibili.com")
+        .send()
+        .await?;
     let mut file = File::create(path).await?;
     while let Some(chunk) = res.chunk().await? {
         io::AsyncWriteExt::write_all(&mut file, &chunk).await?;
