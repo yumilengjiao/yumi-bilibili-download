@@ -6,7 +6,7 @@ use yumi_bilibili_download::error::Result;
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Config {
     #[serde(default = "default_concurrencies")]
-    concurrencies: usize,
+    pub concurrencies: usize,
 }
 
 impl Config {

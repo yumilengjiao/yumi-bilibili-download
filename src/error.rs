@@ -27,13 +27,13 @@ pub type Result<T> = std::result::Result<T, Error>;
 ///
 /// * `error`: 错误类型
 pub fn default_error_handler(error: Error) {
-    eprintln!("\n\t{}", "─────────────────────────────".red());
+    eprintln!("\n\t{}", "──────────────────────────────────────────".red());
     eprintln!(
         "\t{} {}",
         "✗ Error:".red().bold(),
         error.to_string().yellow()
     );
-    eprintln!("\t{}\n", "─────────────────────────────".red());
+    eprintln!("\t{}\n", "──────────────────────────────────────────".red());
 }
 
 #[test]

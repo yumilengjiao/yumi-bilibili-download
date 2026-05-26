@@ -1,13 +1,14 @@
 mod app;
+mod cache;
 mod clap_app;
 mod config;
+mod controller;
 mod directories;
-mod cache;
 
 use std::process::ExitCode;
 
 use clap::Parser;
-use yumi_bilibili_download::{actuator, error::*};
+use yumi_bilibili_download::{error::*, login};
 
 use crate::{
     app::App,
@@ -30,18 +31,14 @@ async fn main() -> ExitCode {
 
 async fn run() -> Result<bool> {
     let cmd = Cmd::parse();
-    let app: App;
     match cmd.subcommand {
         Commands::Login => {
-            App::new(false).await?;
+            let account = login::get_account().await?;
+            cache::save_user_info(account, APP_PATH.cache_auth_path())?;
         }
-        Commands::Download {
-            mode,
-            batch,
-            output,
-            url,
-        } => {
-            let app = App::new(true).await?;
+        Commands::Download(args) => {
+            let app = App::new().await?;
+            controller::start_task(&app, args).await?;
         }
     }
     Ok(true)

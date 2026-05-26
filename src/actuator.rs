@@ -6,13 +6,9 @@ use serde_json::Value;
 use tokio::{fs::File, io, process};
 
 use crate::{
-    client::{self, BiliClient},
+    client::BiliClient,
     error::{Error, Result},
-    model::{
-        collection::{CollectionData, CollectionUrlResponse},
-        download::DownloadOption,
-        video::PlayUrlResponse,
-    },
+    model::{collection::CollectionUrlResponse, download::DownloadOption, video::PlayUrlResponse},
     url::{MEDIO_LIST, UA, VIDEO_INFO},
 };
 

@@ -80,7 +80,7 @@ impl AppPath {
         &self.config_path
     }
 
-    pub fn cache_path(&self) -> &Path {
+    pub fn cache_auth_path(&self) -> &Path {
         &self.cache_auth_path
     }
 }

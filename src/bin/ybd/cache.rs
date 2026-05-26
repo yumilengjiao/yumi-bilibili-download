@@ -20,6 +20,9 @@ pub fn load_user_from_file(source: &Path) -> Result<Account> {
 /// * `account`: 账户
 /// * `dest`: 保存目的地
 pub fn save_user_info(account: Account, dest: &Path) -> Result<bool> {
+    if let Some(parent) = dest.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
     let file = File::create(dest)?;
     serde_json::to_writer(file, &account)?;
     Ok(true)
