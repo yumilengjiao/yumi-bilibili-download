@@ -6,10 +6,14 @@ use serde_json::Value;
 use tokio::{fs::File, io, process};
 
 use crate::{
-    client::BiliClient,
+    client::{self, BiliClient},
     error::{Error, Result},
-    model::{download::DownloadOption, video::PlayUrlResponse},
-    url::{UA, VIDEO_INFO},
+    model::{
+        collection::{CollectionData, CollectionUrlResponse},
+        download::DownloadOption,
+        video::PlayUrlResponse,
+    },
+    url::{MEDIO_LIST, UA, VIDEO_INFO},
 };
 
 #[derive(Debug, Clone, ValueEnum)]
@@ -182,6 +186,48 @@ pub async fn get_basic_video_info(bvid: &str) -> Result<(String, String, String)
         .to_string();
 
     Ok((title, pic, cid))
+}
+
+/// 获取收藏夹信息
+///
+/// * `ml_id`: 收藏夹标识
+/// * `page_number`: 页号
+/// * `page_size`: 页内数
+/// * `bili_client`: 如果收藏夹是私有未公开需要认证信息
+pub async fn get_basic_collection_info(
+    ml_id: &str,
+    page_number: usize,
+    page_size: usize,
+    bili_client: Option<&BiliClient>,
+) -> Result<CollectionUrlResponse> {
+    if let Some(bilibili_client) = bili_client {
+        let cur: CollectionUrlResponse = bilibili_client
+            .get(MEDIO_LIST)
+            .query(&[
+                ("media_id", ml_id),
+                ("ps", &page_size.to_string()),
+                ("pn", &page_number.to_string()),
+            ])
+            .send()
+            .await?
+            .json()
+            .await?;
+        return Ok(cur);
+    }
+    let client = Client::builder().user_agent(UA).build()?;
+    let cur: CollectionUrlResponse = client
+        .get(MEDIO_LIST)
+        .header("Referer", "https://www.bilibili.com")
+        .query(&[
+            ("media_id", ml_id),
+            ("ps", &page_size.to_string()),
+            ("pn", &page_number.to_string()),
+        ])
+        .send()
+        .await?
+        .json()
+        .await?;
+    Ok(cur)
 }
 
 pub async fn merge_video_audio(

@@ -8,6 +8,9 @@ pub const WBI: &str = "https://api.bilibili.com/x/web-interface/nav";
 // 视频基础信息
 pub const VIDEO_INFO: &str = "https://api.bilibili.com/x/web-interface/view";
 
+// 收藏夹视频信息
+pub const MEDIO_LIST: &str = "https://api.bilibili.com/x/v3/fav/resource/list";
+
 // 视频下载地址（需要 WBI 签名）
 pub const VIDEO_DOWNLOAD_URL: &str = "https://api.bilibili.com/x/player/wbi/playurl";
 
