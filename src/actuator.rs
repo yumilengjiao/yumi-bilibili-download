@@ -9,10 +9,7 @@ use tokio::{fs::File, io, process};
 use crate::{
     client::BiliClient,
     error::{Error, Result},
-    model::{
-        quality::{AudioQuality, VideoEncode, VideoQuality},
-        video::PlayUrlResponse,
-    },
+    model::{download::DownloadOption, video::PlayUrlResponse},
     url::{UA, VIDEO_INFO, WBI},
 };
 
@@ -33,23 +30,25 @@ pub enum Mode {
 pub async fn download_video(
     bili_client: &BiliClient,
     pur: &PlayUrlResponse,
-    video_quality: Option<VideoQuality>,
-    video_encode: Option<VideoEncode>,
-    audio_quality: Option<AudioQuality>,
-    ffmpeg_path: Option<&Path>,
-    audio_path: &Path,
-    video_path: &Path,
-    output: &Path,
+    download_option: &DownloadOption<'_>,
 ) -> Result<()> {
+    let video_path = download_option
+        .video_path
+        .ok_or(Error::Path("video_path 未设置".into()))?;
+    let audio_path = download_option
+        .audio_path
+        .ok_or(Error::Path("audio_path 未设置".into()))?;
+    let output = download_option
+        .output
+        .ok_or(Error::Path("output 未设置".into()))?;
+
     let (video_res, audio_res) = tokio::join!(
-        download_video_with_no_audio(bili_client, pur, video_quality, video_encode, video_path),
-        download_audio(bili_client, pur, audio_quality, audio_path),
+        download_video_with_no_audio(bili_client, pur, download_option),
+        download_audio(bili_client, pur, download_option),
     );
     video_res?;
     audio_res?;
-    println!("音视频下载完毕");
-    merge_video_audio(video_path, audio_path, output, ffmpeg_path).await?;
-    println!("视频合并完毕");
+    merge_video_audio(video_path, audio_path, output, download_option.ffmpeg_path).await?;
     Ok(())
 }
 
@@ -90,18 +89,19 @@ pub async fn download_cover(client: &Client, url: &str, path: &Path) -> Result<(
 pub async fn download_video_with_no_audio(
     bili_client: &BiliClient,
     pur: &PlayUrlResponse,
-    video_quality: Option<VideoQuality>,
-    video_encode: Option<VideoEncode>,
-    path: &Path,
+    download_option: &DownloadOption<'_>,
 ) -> Result<()> {
-    if path.is_dir() {
+    let video_path = download_option
+        .video_path
+        .ok_or(Error::Path("没有输入视频输出路径".into()))?;
+    if video_path.is_dir() {
         return Err(Error::Path("路径不能是目录".into()));
     }
     let video_data = pur.get_data()?;
 
-    let url = if video_quality.is_some() || video_encode.is_some() {
+    let url = if download_option.video_quality.is_some() || download_option.video_encode.is_some() {
         video_data
-            .get_specified_video_url(video_quality, video_encode)
+            .get_specified_video_url(download_option.video_quality, download_option.video_encode)
             .ok_or(Error::Normal(
                 "无法获取指定分辨率或编码格式的视频资源".into(),
             ))?
@@ -110,7 +110,7 @@ pub async fn download_video_with_no_audio(
             .best_video_quality_url()
             .ok_or(Error::Normal("没有找到视频".into()))?
     };
-    download_url(bili_client, url, path).await
+    download_url(bili_client, url, video_path).await
 }
 
 /// 下载音频文件,内部逻辑与视频一致
@@ -121,15 +121,16 @@ pub async fn download_video_with_no_audio(
 pub async fn download_audio(
     bili_client: &BiliClient,
     pur: &PlayUrlResponse,
-    audio_quality: Option<AudioQuality>,
-    path: &Path,
+    download_option: &DownloadOption<'_>,
 ) -> Result<()> {
+    let path = download_option
+        .audio_path
+        .ok_or(Error::Path("没有输入音频输出路径".into()))?;
     if path.is_dir() {
         return Err(Error::Path("路径不能是目录".into()));
     }
     let video_data = pur.get_data()?;
-
-    let url = match audio_quality {
+    let url = match download_option.audio_quality {
         Some(aq) => video_data
             .get_specified_audio_url(aq)
             .ok_or(Error::Normal("无法获取指定音质的音频资源".into()))?,
