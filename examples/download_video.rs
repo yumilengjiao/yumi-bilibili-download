@@ -9,14 +9,18 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     let resp = PlayUrlResponse::new(&biliclient, bvid).await?;
     fs::create_dir_all("output").await?;
-    actuator::download_video_with_no_audio(
+    actuator::download_video(
         &biliclient,
         &resp,
         None,
         None,
-        Path::new("output/audio_example.mp4"),
+        None,
+        None,
+        Path::new("output/audio_example.m4a"),
+        Path::new("output/video_example.mp4"),
+        Path::new("output/video_sample.mp4"),
     )
     .await?;
-    println!("The res is outputed to output/audio_example.mp4");
+    println!("The video is outputed to output/video_sample.mp4");
     Ok(())
 }

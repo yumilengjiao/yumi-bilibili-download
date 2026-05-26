@@ -4,14 +4,14 @@ use clap::ValueEnum;
 use regex::Regex;
 use reqwest::Client;
 use serde_json::Value;
-use tokio::{fs::File, io};
+use tokio::{fs::File, io, process};
 
 use crate::{
     client::BiliClient,
     error::{Error, Result},
     model::{
         quality::{AudioQuality, VideoEncode, VideoQuality},
-        video::VideoData,
+        video::PlayUrlResponse,
     },
     url::{UA, VIDEO_INFO, WBI},
 };
@@ -21,6 +21,36 @@ pub enum Mode {
     Cover,
     Audio,
     Video,
+}
+
+/// 下载视频文件
+///
+/// * `bili_client`: 发送请求的带令牌的客户端
+/// * `pur`: 视频信息返回响应体
+/// * `video_quality`: [视频分辨率],
+/// * `video_encode`: [视频编码格式],
+/// * `path`: 下载到的路径
+pub async fn download_video(
+    bili_client: &BiliClient,
+    pur: &PlayUrlResponse,
+    video_quality: Option<VideoQuality>,
+    video_encode: Option<VideoEncode>,
+    audio_quality: Option<AudioQuality>,
+    ffmpeg_path: Option<&Path>,
+    audio_path: &Path,
+    video_path: &Path,
+    output: &Path,
+) -> Result<()> {
+    let (video_res, audio_res) = tokio::join!(
+        download_video_with_no_audio(bili_client, pur, video_quality, video_encode, video_path),
+        download_audio(bili_client, pur, audio_quality, audio_path),
+    );
+    video_res?;
+    audio_res?;
+    println!("音视频下载完毕");
+    merge_video_audio(video_path, audio_path, output, ffmpeg_path).await?;
+    println!("视频合并完毕");
+    Ok(())
 }
 
 /// 下载视频封面
@@ -53,13 +83,13 @@ pub async fn download_cover(client: &Client, url: &str, path: &Path) -> Result<(
 /// 下载视频文件,没有音频
 ///
 /// * `bili_client`: 发送请求的带令牌的客户端
-/// * `video_data`: 视频元数据
+/// * `pur`: 视频信息返回响应体
 /// * `video_quality`: [视频分辨率],
 /// * `video_encode`: [视频编码格式],
 /// * `path`: 下载到的路径
 pub async fn download_video_with_no_audio(
     bili_client: &BiliClient,
-    video_data: &VideoData,
+    pur: &PlayUrlResponse,
     video_quality: Option<VideoQuality>,
     video_encode: Option<VideoEncode>,
     path: &Path,
@@ -67,6 +97,8 @@ pub async fn download_video_with_no_audio(
     if path.is_dir() {
         return Err(Error::Path("路径不能是目录".into()));
     }
+    let video_data = pur.get_data()?;
+
     let url = if video_quality.is_some() || video_encode.is_some() {
         video_data
             .get_specified_video_url(video_quality, video_encode)
@@ -84,17 +116,18 @@ pub async fn download_video_with_no_audio(
 /// 下载音频文件,内部逻辑与视频一致
 ///
 /// * `bili_client`: 发送请求的带令牌的客户端
-/// * `video_data`: 视频元数据
+/// * `pur`: 视频信息返回响应体
 /// * `path`: 下载到的路径
 pub async fn download_audio(
     bili_client: &BiliClient,
-    video_data: &VideoData,
+    pur: &PlayUrlResponse,
     audio_quality: Option<AudioQuality>,
     path: &Path,
 ) -> Result<()> {
     if path.is_dir() {
         return Err(Error::Path("路径不能是目录".into()));
     }
+    let video_data = pur.get_data()?;
 
     let url = match audio_quality {
         Some(aq) => video_data
@@ -195,6 +228,31 @@ pub async fn get_wbi_keys(client: &BiliClient) -> Result<(String, String)> {
         .to_string();
 
     Ok((img_key, sub_key))
+}
+
+pub async fn merge_video_audio(
+    video_path: &Path,
+    audio_path: &Path,
+    output_path: &Path,
+    ffmpeg_path: Option<&Path>,
+) -> Result<()> {
+    let ffmpeg = ffmpeg_path.unwrap_or(Path::new("ffmpeg"));
+    let status = process::Command::new(ffmpeg)
+        .args([
+            "-i",
+            video_path.to_str().unwrap(),
+            "-i",
+            audio_path.to_str().unwrap(),
+            "-c",
+            "copy",
+            output_path.to_str().unwrap(),
+        ])
+        .status()
+        .await?;
+    if !status.success() {
+        return Err(Error::Normal("ffmpeg 合并失败".into()));
+    }
+    Ok(())
 }
 
 async fn download_url(bili_client: &BiliClient, url: &str, path: &Path) -> Result<()> {

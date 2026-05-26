@@ -17,7 +17,7 @@ use crate::url::VIDEO_DOWNLOAD_URL;
 #[serde(rename_all = "camelCase")]
 pub struct PlayUrlResponse {
     pub code: i64,
-    pub data: VideoData,
+    data: VideoData,
     pub message: String,
     pub ttl: i64,
 }
@@ -33,9 +33,9 @@ impl PlayUrlResponse {
         Ok(bili_client.get(&url).send().await?.json().await?)
     }
 
-    pub fn get_data(self) -> Result<VideoData> {
+    pub fn get_data(&self) -> Result<&VideoData> {
         self.valid()?;
-        Ok(self.data)
+        Ok(&self.data)
     }
 
     fn valid(&self) -> Result<()> {
@@ -142,7 +142,8 @@ impl VideoData {
                 .dash
                 .dolby
                 .as_ref()
-                .and_then(|db| db.audio.first())
+                .and_then(|db| db.audio.as_ref())
+                .and_then(|audio_vec| audio_vec.first())
                 .map(|a| a.base_url.as_str()),
             _ => self
                 .dash
@@ -223,14 +224,44 @@ pub struct SegmentBase2 {
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Dolby {
-    pub audio: Vec<Audio2>,
+    pub audio: Option<Vec<Audio2>>,
     #[serde(rename = "type")]
     pub type_field: i64,
+}
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Audio2 {
+    #[serde(rename = "SegmentBase")]
+    pub segment_base: SegmentBase3,
+    pub backup_url: Vec<String>,
+    #[serde(rename = "backup_url")]
+    pub backup_url2: Vec<String>,
+    pub bandwidth: i64,
+    pub base_url: String,
+    #[serde(rename = "base_url")]
+    pub base_url2: String,
+    pub codecid: i64,
+    pub codecs: String,
+    pub frame_rate: String,
+    #[serde(rename = "frame_rate")]
+    pub frame_rate2: String,
+    pub height: i64,
+    pub id: i64,
+    pub mime_type: String,
+    #[serde(rename = "mime_type")]
+    pub mime_type2: String,
+    pub sar: String,
+    #[serde(rename = "segment_base")]
+    pub segment_base2: SegmentBase4,
+    pub start_with_sap: i64,
+    #[serde(rename = "start_with_sap")]
+    pub start_with_sap2: i64,
+    pub width: i64,
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct Audio2 {
+pub struct Video {
     #[serde(rename = "SegmentBase")]
     pub segment_base: SegmentBase3,
     pub backup_url: Vec<String>,
@@ -324,53 +355,6 @@ pub struct SegmentBase5 {
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SegmentBase6 {
-    #[serde(rename = "index_range")]
-    pub index_range: String,
-    pub initialization: String,
-}
-
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct Video {
-    #[serde(rename = "SegmentBase")]
-    pub segment_base: SegmentBase7,
-    pub backup_url: Vec<String>,
-    #[serde(rename = "backup_url")]
-    pub backup_url2: Vec<String>,
-    pub bandwidth: i64,
-    pub base_url: String,
-    #[serde(rename = "base_url")]
-    pub base_url2: String,
-    pub codecid: i64,
-    pub codecs: String,
-    pub frame_rate: String,
-    #[serde(rename = "frame_rate")]
-    pub frame_rate2: String,
-    pub height: i64,
-    pub id: i64,
-    pub mime_type: String,
-    #[serde(rename = "mime_type")]
-    pub mime_type2: String,
-    pub sar: String,
-    #[serde(rename = "segment_base")]
-    pub segment_base2: SegmentBase8,
-    pub start_with_sap: i64,
-    #[serde(rename = "start_with_sap")]
-    pub start_with_sap2: i64,
-    pub width: i64,
-}
-
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct SegmentBase7 {
-    #[serde(rename = "Initialization")]
-    pub initialization: String,
-    pub index_range: String,
-}
-
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct SegmentBase8 {
     #[serde(rename = "index_range")]
     pub index_range: String,
     pub initialization: String,
