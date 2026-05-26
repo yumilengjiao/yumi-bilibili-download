@@ -1,5 +1,6 @@
 use std::io;
 
+use colored::Colorize;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -22,11 +23,17 @@ pub enum Error {
 
 pub type Result<T> = std::result::Result<T, Error>;
 
+/// 统一错误处理
+///
+/// * `error`: 错误类型
 pub fn default_error_handler(error: Error) {
+    eprintln!("\n\t{}", "─────────────────────────────".red());
     eprintln!(
-        "\n\tAn error occured in yumi-bilibili-download\n\t{}\n",
-        error
+        "\t{} {}",
+        "✗ Error:".red().bold(),
+        error.to_string().yellow()
     );
+    eprintln!("\t{}\n", "─────────────────────────────".red());
 }
 
 #[test]

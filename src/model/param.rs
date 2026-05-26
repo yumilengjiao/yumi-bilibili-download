@@ -6,9 +6,10 @@ use std::{
 };
 
 use crate::{
-    actuator::{get_basic_video_info, get_wbi_keys},
+    actuator::get_basic_video_info,
     client::BiliClient,
     error::{Error, Result},
+    login::get_wbi_keys,
 };
 
 const MIXIN_KEY_ENC_TAB: [usize; 64] = [
@@ -57,8 +58,6 @@ pub struct VideoRequestParam {
     pub fourk: bool,
     fnver: String,
     wts: String,
-    img_key: String,
-    sub_key: String,
     w_rid: String,
 }
 
@@ -203,8 +202,6 @@ impl VideoRequestParamBuilder {
             fnval: self.fnval,
             fourk: self.fourk,
             fnver: self.fnver.unwrap_or_else(|| "0".into()),
-            img_key: wbi.img_key,
-            sub_key: wbi.sub_key,
             wts,
             w_rid,
         })

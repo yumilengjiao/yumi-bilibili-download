@@ -5,6 +5,7 @@ use reqwest::Client;
 use serde_json::Value;
 
 use crate::{
+    client::BiliClient,
     error::{Error, Result},
     model::account::Account,
     url::{LOGIN, UA, VALIDATE_QRCODE, WBI},
@@ -108,4 +109,39 @@ async fn query_login_state(
             code => println!("未知状态码: {}", code),
         }
     }
+}
+
+/// 获取wbi签名所需的img_key和sub_key密钥
+///
+/// * `client`: reqwest客户端
+/// * `sessdata`: 会话令牌
+///
+/// # Retures
+///
+/// (img_key, sub_key)
+pub async fn get_wbi_keys(client: &BiliClient) -> Result<(String, String)> {
+    let resp: Value = client.get(WBI).send().await?.json().await?;
+
+    let img_url = resp["data"]["wbi_img"]["img_url"]
+        .as_str()
+        .ok_or(Error::Normal("无法获取 img_url".into()))?;
+    let sub_url = resp["data"]["wbi_img"]["sub_url"]
+        .as_str()
+        .ok_or(Error::Normal("无法获取 sub_url".into()))?;
+
+    // 从 URL 中提取文件名（去掉路径和 .png 后缀）
+    let img_key = img_url
+        .split('/')
+        .next_back()
+        .unwrap_or("")
+        .trim_end_matches(".png")
+        .to_string();
+    let sub_key = sub_url
+        .split('/')
+        .next_back()
+        .unwrap_or("")
+        .trim_end_matches(".png")
+        .to_string();
+
+    Ok((img_key, sub_key))
 }
