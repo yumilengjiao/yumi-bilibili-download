@@ -1,4 +1,6 @@
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+use clap::ValueEnum;
+
+#[derive(ValueEnum, Copy, Clone, Debug, PartialEq, Eq)]
 pub enum VideoQuality {
     K8 = 127,
     K4 = 120,
@@ -9,7 +11,7 @@ pub enum VideoQuality {
     LD360P = 16,
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(ValueEnum, Copy, Clone, Debug)]
 pub enum VideoEncode {
     AVC,  // H.264，兼容性最好
     HEVC, // H.265，压缩率更高
@@ -27,7 +29,7 @@ impl VideoEncode {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(ValueEnum, Copy, Clone, Debug, PartialEq, Eq)]
 pub enum AudioQuality {
     HiRes = 30251,  // Hi-Res 无损
     Dolby = 30250,  // 杜比全景声

@@ -1,4 +1,4 @@
-use std::{env, path::PathBuf, sync::Arc};
+use std::{env, sync::Arc};
 
 use futures::future;
 use reqwest::Client;
@@ -15,33 +15,31 @@ use yumi_bilibili_download::{
 use crate::{app::App, clap_app::DownloadArgs};
 
 pub async fn start_task(app: &App, args: DownloadArgs) -> Result<()> {
+    match args.mode {
+        Mode::Audio => download_audio(app, args).await,
+        Mode::Cover => download_cover(app, args).await,
+        Mode::Video => download_video(app, args).await,
+    }
+}
+
+async fn download_video(app: &App, args: DownloadArgs) -> Result<()> {
     let DownloadArgs {
-        mode,
         batch,
         output,
         ffmpeg,
+        quality_audio,
+        quality_video,
+        encode_video,
         url,
+        ..
     } = args;
-
     let dir = match output {
         Some(p) => p,
         None => env::current_dir()?,
     };
-    match mode {
-        Mode::Audio => download_audio(app, batch, &url, dir).await,
-        Mode::Cover => download_cover(app, batch, &url, dir).await,
-        Mode::Video => download_video(app, ffmpeg, batch, &url, dir).await,
-    }
-}
-
-async fn download_video(
-    app: &App,
-    ffmpeg: Option<PathBuf>,
-    batch: bool,
-    url: &str,
-    output: PathBuf,
-) -> Result<()> {
+    let output = dir;
     tokio::fs::create_dir_all(&output).await?;
+
     let account = app
         .account
         .as_ref()
@@ -55,7 +53,7 @@ async fn download_video(
         })?;
     let bili_client = BiliClient::new(account)?;
     if batch {
-        let ml_id = extract_media_id(url)?;
+        let ml_id = extract_media_id(&url)?;
         let concurrencies = app.config.concurrencies;
         let mut bv_ids = Vec::<String>::new();
         let mut pn = 1usize;
@@ -104,6 +102,18 @@ async fn download_video(
                     .audio_path(&audio_tmp)
                     .output(&video_path);
 
+                if let Some(quality_audio) = quality_audio {
+                    builder = builder.audio_quality(quality_audio);
+                }
+
+                if let Some(quality_video) = quality_video {
+                    builder = builder.video_quality(quality_video);
+                }
+
+                if let Some(encode_video) = encode_video {
+                    builder = builder.video_encode(encode_video);
+                }
+
                 if let Some(ffmpeg) = ffmpeg_s.as_deref() {
                     builder = builder.ffmpeg_path(ffmpeg);
                 }
@@ -144,11 +154,11 @@ async fn download_video(
             )));
         }
     } else {
-        let bv_id = extract_bv_id(url)?;
+        let bv_id = extract_bv_id(&url)?;
         let (title, _, _) = actuator::get_basic_video_info(&bv_id)
             .await
             .map_err(|e| Error::Normal(format!("无法获取视频,BV: {}, 错误信息: {}", bv_id, e)))?;
-        let video_path = output.join(format!("{}.mpa", title));
+        let video_path = output.join(format!("{}.mp4", title));
         let pur = PlayUrlResponse::new(&bili_client, &bv_id)
             .await
             .map_err(|e| {
@@ -165,6 +175,18 @@ async fn download_video(
             .video_path(&video_tmp)
             .audio_path(&audio_tmp)
             .output(&video_path);
+
+        if let Some(quality_audio) = quality_audio {
+            builder = builder.audio_quality(quality_audio);
+        }
+
+        if let Some(quality_video) = quality_video {
+            builder = builder.video_quality(quality_video);
+        }
+
+        if let Some(encode_video) = encode_video {
+            builder = builder.video_encode(encode_video);
+        }
 
         if let Some(ffmpeg) = ffmpeg.as_deref() {
             builder = builder.ffmpeg_path(ffmpeg);
@@ -183,7 +205,18 @@ async fn download_video(
     Ok(())
 }
 
-async fn download_audio(app: &App, batch: bool, url: &str, output: PathBuf) -> Result<()> {
+async fn download_audio(app: &App, args: DownloadArgs) -> Result<()> {
+    let DownloadArgs {
+        batch,
+        output,
+        quality_audio,
+        url,
+        ..
+    } = args;
+    let output = match output {
+        Some(p) => p,
+        None => env::current_dir()?,
+    };
     tokio::fs::create_dir_all(&output).await?;
     let account = app
         .account
@@ -199,7 +232,7 @@ async fn download_audio(app: &App, batch: bool, url: &str, output: PathBuf) -> R
     let bili_client = BiliClient::new(account)?;
 
     if batch {
-        let ml_id = extract_media_id(url)?;
+        let ml_id = extract_media_id(&url)?;
         let concurrencies = app.config.concurrencies;
         let mut bv_ids = Vec::<String>::new();
         let mut pn = 1usize;
@@ -237,7 +270,14 @@ async fn download_audio(app: &App, batch: bool, url: &str, output: PathBuf) -> R
                         title, bv_id, e
                     ))
                 })?;
-                let option = DownloadOption::builder().audio_path(&audio_path).build();
+                let mut builder = DownloadOption::builder().audio_path(&audio_path);
+
+                if let Some(quality_audio) = quality_audio {
+                    builder = builder.audio_quality(quality_audio);
+                }
+
+                let option = builder.build();
+
                 actuator::download_audio(&bc, &pur, &option)
                     .await
                     .map_err(|e| {
@@ -273,7 +313,7 @@ async fn download_audio(app: &App, batch: bool, url: &str, output: PathBuf) -> R
             )));
         }
     } else {
-        let bv_id = extract_bv_id(url)?;
+        let bv_id = extract_bv_id(&url)?;
         let (title, _, _) = actuator::get_basic_video_info(&bv_id)
             .await
             .map_err(|e| Error::Normal(format!("无法获取音频,BV: {}, 错误信息: {}", bv_id, e)))?;
@@ -286,7 +326,17 @@ async fn download_audio(app: &App, batch: bool, url: &str, output: PathBuf) -> R
                     title, bv_id, e
                 ))
             })?;
-        let option = DownloadOption::builder().audio_path(&audio_path).build();
+
+        // 构造下载选项
+        let mut builder = DownloadOption::builder().audio_path(&audio_path);
+
+        if let Some(quality_audio) = quality_audio {
+            builder = builder.audio_quality(quality_audio);
+        }
+
+        let option = builder.build();
+
+        // 执行下载
         actuator::download_audio(&bili_client, &pur, &option)
             .await
             .map_err(|e| {
@@ -299,7 +349,14 @@ async fn download_audio(app: &App, batch: bool, url: &str, output: PathBuf) -> R
     Ok(())
 }
 
-async fn download_cover(app: &App, batch: bool, url: &str, output: PathBuf) -> Result<()> {
+async fn download_cover(app: &App, args: DownloadArgs) -> Result<()> {
+    let DownloadArgs {
+        batch, output, url, ..
+    } = args;
+    let output = match output {
+        Some(p) => p,
+        None => env::current_dir()?,
+    };
     tokio::fs::create_dir_all(&output).await?;
     if batch {
         let account = app
@@ -318,7 +375,7 @@ async fn download_cover(app: &App, batch: bool, url: &str, output: PathBuf) -> R
                 }
             })?;
         let bili_client = BiliClient::new(account)?;
-        let ml_id = extract_media_id(url)?;
+        let ml_id = extract_media_id(&url)?;
         let concurrencies = app.config.concurrencies;
         let mut bv_title_covers = Vec::<(String, String, String)>::new();
         let mut pn = 1usize;
@@ -389,7 +446,7 @@ async fn download_cover(app: &App, batch: bool, url: &str, output: PathBuf) -> R
             )));
         }
     } else {
-        let bv_id = extract_bv_id(url)?;
+        let bv_id = extract_bv_id(&url)?;
         let client = Client::builder().user_agent(UA).build()?;
         let (title, cover, _) = actuator::get_basic_video_info(&bv_id).await?;
         let cover_path = output.join(format!("{}.png", title));
