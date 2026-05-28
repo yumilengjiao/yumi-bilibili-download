@@ -48,6 +48,8 @@ pub async fn download_video(
     video_res?;
     audio_res?;
     merge_video_audio(video_path, audio_path, output, download_option.ffmpeg_path).await?;
+    tokio::fs::remove_file(video_path).await?;
+    tokio::fs::remove_file(audio_path).await?;
     Ok(())
 }
 
@@ -252,6 +254,20 @@ pub async fn merge_video_audio(
 }
 
 async fn download_url(bili_client: &BiliClient, url: &str, path: &Path) -> Result<()> {
+    let mut last_err = None;
+    for attempt in 0..3 {
+        if attempt > 0 {
+            tokio::time::sleep(tokio::time::Duration::from_secs(attempt * 2)).await;
+        }
+        match try_download_url(bili_client, url, path).await {
+            Ok(()) => return Ok(()),
+            Err(e) => last_err = Some(e),
+        }
+    }
+    Err(last_err.unwrap())
+}
+
+async fn try_download_url(bili_client: &BiliClient, url: &str, path: &Path) -> Result<()> {
     let mut res = bili_client.get(url).send().await?;
     let mut file = File::create(path).await?;
     while let Some(chunk) = res.chunk().await? {

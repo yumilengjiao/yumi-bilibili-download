@@ -31,4 +31,7 @@ pub struct DownloadArgs {
     pub output: Option<PathBuf>,
     /// URL of the resources
     pub url: String,
+    /// path of the ffmpeg
+    #[arg(long)]
+    pub ffmpeg: Option<PathBuf>,
 }
