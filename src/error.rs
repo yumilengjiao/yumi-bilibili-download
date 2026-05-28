@@ -15,6 +15,8 @@ pub enum Error {
     StdFileIO(#[from] io::Error),
     #[error("unknown error")]
     Unknown(),
+    #[error("semaphore closed")]
+    SemaphoreAcquire(#[from] tokio::sync::AcquireError),
     #[error("error field during build: {0}")]
     Build(String),
     #[error("norlmal error: {0}")]

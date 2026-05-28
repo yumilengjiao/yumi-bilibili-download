@@ -23,4 +23,8 @@ impl BiliClient {
             .header("Cookie", format!("SESSDATA={}", self.sessdata))
             .header("Referer", "https://www.bilibili.com")
     }
+
+    pub fn downgrade(&self) -> &Client {
+        &self.client
+    }
 }
