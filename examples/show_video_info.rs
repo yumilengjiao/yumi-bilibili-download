@@ -8,7 +8,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let account = login::get_account().await?;
     let bili_client = BiliClient::new(&account)?;
     let bvid = extract_bv_id(
-        "https://www.bilibili.com/video/BV12KifY6EKb/?spm_id_from=333.337.search-card.all.click&vd_source=8bd37d9aaf81178ae3e80214a1c8e367",
+        "https://www.bilibili.com/video/BV17W411e7VL/?spm_id_from=333.337.search-card.all.click&vd_source=8bd37d9aaf81178ae3e80214a1c8e367",
     )?;
     let resp = PlayUrlResponse::new(&bili_client, &bvid).await?;
 

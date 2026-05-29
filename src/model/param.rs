@@ -147,8 +147,8 @@ impl Default for VideoRequestParamBuilder {
 }
 
 impl VideoRequestParamBuilder {
-    pub async fn new(bvid: &str) -> Result<Self> {
-        let (_, _, cid) = get_basic_video_info(bvid).await?;
+    pub async fn new(bvid: &str, bili_client: &BiliClient) -> Result<Self> {
+        let (_, _, cid) = get_basic_video_info(bvid, Some(&bili_client)).await?;
         Ok(Self {
             bvid: Some(bvid.into()),
             cid: Some(cid),

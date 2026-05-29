@@ -151,19 +151,33 @@ pub async fn download_audio(
 /// # Retures
 ///
 /// (title, pic, cid) -> 视频标题，视频封面url, 分p标识号
-pub async fn get_basic_video_info(bvid: &str) -> Result<(String, String, String)> {
-    let client = Client::builder().user_agent(UA).build()?;
-
-    let resp: Value = client
-        .get(VIDEO_INFO)
-        .header("Referer", "https://www.bilibili.com")
-        .query(&[("bvid", bvid)])
-        .send()
-        .await?
-        .json()
-        .await?;
+pub async fn get_basic_video_info(
+    bvid: &str,
+    bili_client: Option<&BiliClient>,
+) -> Result<(String, String, String)> {
+    let resp: Value = if let Some(biliclient) = bili_client {
+        biliclient
+            .get(VIDEO_INFO)
+            .header("Referer", "https://www.bilibili.com")
+            .query(&[("bvid", bvid)])
+            .send()
+            .await?
+            .json()
+            .await?
+    } else {
+        let client = Client::builder().user_agent(UA).build()?;
+        client
+            .get(VIDEO_INFO)
+            .header("Referer", "https://www.bilibili.com")
+            .query(&[("bvid", bvid)])
+            .send()
+            .await?
+            .json()
+            .await?
+    };
 
     if resp["code"].as_i64().unwrap_or(-1) != 0 {
+        println!("{:#?}", resp["code"]);
         return Err(Error::Normal(format!(
             "获取视频信息失败: {}",
             resp["message"]

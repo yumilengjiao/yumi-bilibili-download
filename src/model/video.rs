@@ -25,7 +25,7 @@ pub struct PlayUrlResponse {
 impl PlayUrlResponse {
     pub async fn new(bili_client: &BiliClient, bvid: &str) -> Result<Self> {
         // 这里构造的是视频请求参数,参数签名逻辑也封装在内
-        let vrp = VideoRequestParamBuilder::new(bvid)
+        let vrp = VideoRequestParamBuilder::new(bvid, bili_client)
             .await?
             .build(bili_client)
             .await?;

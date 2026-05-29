@@ -82,11 +82,18 @@ async fn download_video(app: &App, args: DownloadArgs) -> Result<()> {
             let ffmpeg_s = Arc::clone(&ffmpeg);
             let jh = tokio::spawn(async move {
                 let _permit = sp.acquire().await?;
-                let (title, _, _) = actuator::get_basic_video_info(&bv_id).await.map_err(|e| {
-                    Error::Normal(format!("无法获取视频,BV: {}, 错误信息: {}", bv_id, e))
-                })?;
+                let (title, _, _) = actuator::get_basic_video_info(&bv_id, Some(&bc))
+                    .await
+                    .map_err(|e| {
+                        Error::Normal(format!("无法获取视频,BV: {}, 错误信息: {}", bv_id, e))
+                    })?;
                 let video_path =
                     base_path.join(format!("{}.mp4", sanitize_filename::sanitize(&title)));
+
+                if video_path.exists() {
+                    return Ok(());
+                }
+
                 let pur = PlayUrlResponse::new(&bc, &bv_id).await.map_err(|e| {
                     Error::Normal(format!(
                         "无法获取视频: {},BV: {},错误信息: {}",
@@ -155,7 +162,7 @@ async fn download_video(app: &App, args: DownloadArgs) -> Result<()> {
         }
     } else {
         let bv_id = extract_bv_id(&url)?;
-        let (title, _, _) = actuator::get_basic_video_info(&bv_id)
+        let (title, _, _) = actuator::get_basic_video_info(&bv_id, Some(&bili_client))
             .await
             .map_err(|e| Error::Normal(format!("无法获取视频,BV: {}, 错误信息: {}", bv_id, e)))?;
         let video_path = output.join(format!("{}.mp4", title));
@@ -259,11 +266,19 @@ async fn download_audio(app: &App, args: DownloadArgs) -> Result<()> {
             let sp = Arc::clone(&semaphore);
             let jh = tokio::spawn(async move {
                 let _permit = sp.acquire().await?;
-                let (title, _, _) = actuator::get_basic_video_info(&bv_id).await.map_err(|e| {
-                    Error::Normal(format!("无法获取视频,BV: {}, 错误信息: {}", bv_id, e))
-                })?;
+                let (title, _, _) = actuator::get_basic_video_info(&bv_id, Some(&bc))
+                    .await
+                    .map_err(|e| {
+                        Error::Normal(format!("无法获取视频,BV: {}, 错误信息: {}", bv_id, e))
+                    })?;
                 let audio_path =
                     base_path.join(format!("{}.m4a", sanitize_filename::sanitize(&title)));
+
+                // 检测是否已经下载
+                if audio_path.exists() {
+                    return Ok(());
+                }
+
                 let pur = PlayUrlResponse::new(&bc, &bv_id).await.map_err(|e| {
                     Error::Normal(format!(
                         "无法获取音频: {},BV: {},错误信息: {}",
@@ -314,7 +329,7 @@ async fn download_audio(app: &App, args: DownloadArgs) -> Result<()> {
         }
     } else {
         let bv_id = extract_bv_id(&url)?;
-        let (title, _, _) = actuator::get_basic_video_info(&bv_id)
+        let (title, _, _) = actuator::get_basic_video_info(&bv_id, Some(&bili_client))
             .await
             .map_err(|e| Error::Normal(format!("无法获取音频,BV: {}, 错误信息: {}", bv_id, e)))?;
         let audio_path = output.join(format!("{}.m4a", title));
@@ -357,24 +372,24 @@ async fn download_cover(app: &App, args: DownloadArgs) -> Result<()> {
         Some(p) => p,
         None => env::current_dir()?,
     };
+    let account = app
+        .account
+        .as_ref()
+        .ok_or(Error::Normal(
+            "未登录，请先登录, 批量下载需要登录账号".into(),
+        ))
+        .and_then(|a| {
+            if a.is_expired() {
+                Err(Error::Normal(
+                    "登录已过期，请重新登录, 批量下载需要登录账号".into(),
+                ))
+            } else {
+                Ok(a)
+            }
+        })?;
+    let bili_client = BiliClient::new(account)?;
     tokio::fs::create_dir_all(&output).await?;
     if batch {
-        let account = app
-            .account
-            .as_ref()
-            .ok_or(Error::Normal(
-                "未登录，请先登录, 批量下载需要登录账号".into(),
-            ))
-            .and_then(|a| {
-                if a.is_expired() {
-                    Err(Error::Normal(
-                        "登录已过期，请重新登录, 批量下载需要登录账号".into(),
-                    ))
-                } else {
-                    Ok(a)
-                }
-            })?;
-        let bili_client = BiliClient::new(account)?;
         let ml_id = extract_media_id(&url)?;
         let concurrencies = app.config.concurrencies;
         let mut bv_title_covers = Vec::<(String, String, String)>::new();
@@ -411,6 +426,12 @@ async fn download_cover(app: &App, args: DownloadArgs) -> Result<()> {
                 let _permit = sp.acquire().await?;
                 let cover_path =
                     base_path.join(format!("{}.png", sanitize_filename::sanitize(&btc.1)));
+
+                // 检测图片是否已经下载
+                if cover_path.exists() {
+                    return Ok(());
+                }
+
                 actuator::download_cover(bc.downgrade(), &btc.2, &cover_path)
                     .await
                     .map_err(|e| {
@@ -448,7 +469,7 @@ async fn download_cover(app: &App, args: DownloadArgs) -> Result<()> {
     } else {
         let bv_id = extract_bv_id(&url)?;
         let client = Client::builder().user_agent(UA).build()?;
-        let (title, cover, _) = actuator::get_basic_video_info(&bv_id).await?;
+        let (title, cover, _) = actuator::get_basic_video_info(&bv_id, Some(&bili_client)).await?;
         let cover_path = output.join(format!("{}.png", title));
         actuator::download_cover(&client, &cover, &cover_path).await?;
     }

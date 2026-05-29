@@ -10,7 +10,7 @@ use yumi_bilibili_download::{
 async fn main() -> Result<(), Box<dyn Error>> {
     let client = Client::builder().user_agent(UA).build()?;
     let bvid = "BV1jp421Z7jS";
-    let (title, url, _) = get_basic_video_info(bvid).await?;
+    let (title, url, _) = get_basic_video_info(bvid,None).await?;
     let title = sanitize_filename::sanitize(&title);
     fs::create_dir_all("output").await?;
     download_cover(&client, &url, Path::new(&format!("output/{}.png", &title))).await?;
