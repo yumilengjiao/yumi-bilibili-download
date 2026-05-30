@@ -1,6 +1,7 @@
 use std::path::Path;
 
 use clap::ValueEnum;
+use futures::StreamExt;
 use reqwest::Client;
 use serde_json::Value;
 use tokio::{fs::File, io, process};
@@ -111,7 +112,14 @@ pub async fn download_video_with_no_audio(
             .best_video_quality_url()
             .ok_or(Error::Normal("没有找到视频".into()))?
     };
-    download_url(bili_client, url, video_path).await
+
+    download_url(
+        bili_client,
+        url,
+        video_path,
+        download_option.on_video_progress.as_deref(),
+    )
+    .await
 }
 
 /// 下载音频文件,内部逻辑与视频一致
@@ -139,7 +147,14 @@ pub async fn download_audio(
             .best_audio_url()
             .ok_or(Error::Normal("没有找到音频".into()))?,
     };
-    download_url(bili_client, url, path).await
+
+    download_url(
+        bili_client,
+        url,
+        path,
+        download_option.on_audio_progress.as_deref(),
+    )
+    .await
 }
 
 /// 获取视频基本信息,基本信息不需要SESSDATA
@@ -267,13 +282,18 @@ pub async fn merge_video_audio(
     Ok(())
 }
 
-async fn download_url(bili_client: &BiliClient, url: &str, path: &Path) -> Result<()> {
+async fn download_url(
+    bili_client: &BiliClient,
+    url: &str,
+    path: &Path,
+    on_progress: Option<&(dyn Fn(u64, Option<u64>) + Send + Sync)>,
+) -> Result<()> {
     let mut last_err = None;
     for attempt in 0..3 {
         if attempt > 0 {
             tokio::time::sleep(tokio::time::Duration::from_secs(attempt * 2)).await;
         }
-        match try_download_url(bili_client, url, path).await {
+        match try_download_url(bili_client, url, path, on_progress).await {
             Ok(()) => return Ok(()),
             Err(e) => last_err = Some(e),
         }
@@ -281,11 +301,24 @@ async fn download_url(bili_client: &BiliClient, url: &str, path: &Path) -> Resul
     Err(last_err.unwrap())
 }
 
-async fn try_download_url(bili_client: &BiliClient, url: &str, path: &Path) -> Result<()> {
-    let mut res = bili_client.get(url).send().await?;
+async fn try_download_url(
+    bili_client: &BiliClient,
+    url: &str,
+    path: &Path,
+    on_progress: Option<&(dyn Fn(u64, Option<u64>) + Send + Sync)>,
+) -> Result<()> {
+    let res = bili_client.get(url).send().await?;
+    let total = res.content_length(); // 这里拿总大小
     let mut file = File::create(path).await?;
-    while let Some(chunk) = res.chunk().await? {
+    let mut downloaded = 0u64;
+    let mut stream = res.bytes_stream();
+    while let Some(chunk) = stream.next().await {
+        let chunk = chunk?;
+        downloaded += chunk.len() as u64;
         io::AsyncWriteExt::write_all(&mut file, &chunk).await?;
+        if let Some(cb) = on_progress {
+            cb(downloaded, total);
+        }
     }
     Ok(())
 }

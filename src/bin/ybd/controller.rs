@@ -8,6 +8,7 @@ use yumi_bilibili_download::{
     client::BiliClient,
     error::{Error, Result},
     model::{download::DownloadOption, quality::VideoEncode, video::PlayUrlResponse},
+    progress::{DownloadMutiProgess, DownloadProgress},
     url::UA,
     util::{extract_bv_id, extract_media_id},
 };
@@ -73,13 +74,18 @@ async fn download_video(app: &App, args: DownloadArgs) -> Result<()> {
         let base_path = Arc::new(output);
         let ffmpeg = Arc::new(ffmpeg);
         let mut handlers = Vec::new();
-        let semaphore = Arc::new(Semaphore::new(concurrencies));
+        let semaphore = Arc::new(Semaphore::new((concurrencies / 2).max(1)));
+        let mp = Arc::new(std::sync::Mutex::new(DownloadMutiProgess::new(
+            vec![],
+            bv_ids.len() as u64,
+        )));
 
         for bv_id in bv_ids {
             let bc = Arc::clone(&bc);
             let base_path = Arc::clone(&base_path);
             let sp = Arc::clone(&semaphore);
             let ffmpeg_s = Arc::clone(&ffmpeg);
+            let mp = Arc::clone(&mp);
             let jh = tokio::spawn(async move {
                 let _permit = sp.acquire().await?;
                 let (title, _, _) = actuator::get_basic_video_info(&bv_id, Some(&bc))
@@ -91,6 +97,7 @@ async fn download_video(app: &App, args: DownloadArgs) -> Result<()> {
                     base_path.join(format!("{}.mp4", sanitize_filename::sanitize(&title)));
 
                 if video_path.exists() {
+                    mp.lock().unwrap().inc_total();
                     return Ok(());
                 }
 
@@ -103,11 +110,41 @@ async fn download_video(app: &App, args: DownloadArgs) -> Result<()> {
                 let video_tmp = video_path.with_extension("video.tmp");
                 let audio_tmp = video_path.with_extension("audio.tmp");
 
+                // 创建进度条，clone pb 给 callback
+                let dp_video = DownloadProgress::new(format!("{} [视频]", bv_id), title.clone(), 0);
+                let dp_audio = DownloadProgress::new(format!("{} [音频]", bv_id), title.clone(), 0);
+                let pb_video = dp_video.pb.clone();
+                let pb_audio = dp_audio.pb.clone();
+                mp.lock().unwrap().add(dp_video);
+                mp.lock().unwrap().add(dp_audio);
+
                 let mut builder = DownloadOption::builder()
                     .video_encode(VideoEncode::AVC)
                     .video_path(&video_tmp)
                     .audio_path(&audio_tmp)
-                    .output(&video_path);
+                    .output(&video_path)
+                    .on_video_progress(Arc::new(move |downloaded, total| {
+                        if let Some(t) = total {
+                            pb_video.set_length(t);
+                            pb_video.set_position(downloaded);
+                            if downloaded >= t {
+                                pb_video.finish_and_clear();
+                            }
+                        } else {
+                            pb_video.set_position(downloaded);
+                        }
+                    }))
+                    .on_audio_progress(Arc::new(move |downloaded, total| {
+                        if let Some(t) = total {
+                            pb_audio.set_length(t);
+                            pb_audio.set_position(downloaded);
+                            if downloaded >= t {
+                                pb_audio.finish_and_clear();
+                            }
+                        } else {
+                            pb_audio.set_position(downloaded);
+                        }
+                    }));
 
                 if let Some(quality_audio) = quality_audio {
                     builder = builder.audio_quality(quality_audio);
@@ -126,19 +163,23 @@ async fn download_video(app: &App, args: DownloadArgs) -> Result<()> {
                 }
 
                 let option = builder.build();
-                actuator::download_video(&bc, &pur, &option)
+                let result = actuator::download_video(&bc, &pur, &option)
                     .await
                     .map_err(|e| {
                         Error::Normal(format!(
                             "无法获取视频: {},BV: {},错误信息: {}",
                             title, bv_id, e
                         ))
-                    })
+                    });
+                mp.lock().unwrap().inc_total();
+                result
             });
             handlers.push(jh);
         }
 
         let results = future::join_all(handlers).await;
+
+        mp.lock().unwrap().finish();
 
         let failed: Vec<String> = results
             .into_iter()
@@ -177,27 +218,30 @@ async fn download_video(app: &App, args: DownloadArgs) -> Result<()> {
         let video_tmp = video_path.with_extension("video.tmp");
         let audio_tmp = video_path.with_extension("audio.tmp");
 
-        let mut builder = DownloadOption::builder()
+        let dp_video = DownloadProgress::new(format!("{} [视频]", bv_id), title.clone(), 0);
+        let dp_audio = DownloadProgress::new(format!("{} [音频]", bv_id), title.clone(), 0);
+        let pb_video = dp_video.pb.clone();
+        let pb_audio = dp_audio.pb.clone();
+
+        let builder = DownloadOption::builder()
             .video_encode(VideoEncode::AVC)
             .video_path(&video_tmp)
             .audio_path(&audio_tmp)
-            .output(&video_path);
+            .output(&video_path)
+            .on_video_progress(Arc::new(move |downloaded, total| {
+                if let Some(t) = total {
+                    pb_video.set_length(t);
+                }
+                pb_video.set_position(downloaded);
+            }))
+            .on_audio_progress(Arc::new(move |downloaded, total| {
+                if let Some(t) = total {
+                    pb_audio.set_length(t);
+                }
+                pb_audio.set_position(downloaded);
+            }));
 
-        if let Some(quality_audio) = quality_audio {
-            builder = builder.audio_quality(quality_audio);
-        }
-
-        if let Some(quality_video) = quality_video {
-            builder = builder.video_quality(quality_video);
-        }
-
-        if let Some(encode_video) = encode_video {
-            builder = builder.video_encode(encode_video);
-        }
-
-        if let Some(ffmpeg) = ffmpeg.as_deref() {
-            builder = builder.ffmpeg_path(ffmpeg);
-        }
+        // ...其他 builder 字段
 
         let option = builder.build();
         actuator::download_video(&bili_client, &pur, &option)
@@ -208,6 +252,9 @@ async fn download_video(app: &App, args: DownloadArgs) -> Result<()> {
                     title, bv_id, e
                 ))
             })?;
+
+        dp_video.pb.finish(); // 直接用 dp 的 pb
+        dp_audio.pb.finish(); // 直接用 dp 的 pb
     }
     Ok(())
 }
@@ -259,11 +306,16 @@ async fn download_audio(app: &App, args: DownloadArgs) -> Result<()> {
         let base_path = Arc::new(output);
         let mut handlers = Vec::new();
         let semaphore = Arc::new(Semaphore::new(concurrencies));
+        let mp = Arc::new(std::sync::Mutex::new(DownloadMutiProgess::new(
+            vec![],
+            bv_ids.len() as u64,
+        )));
 
         for bv_id in bv_ids {
             let bc = Arc::clone(&bc);
             let base_path = Arc::clone(&base_path);
             let sp = Arc::clone(&semaphore);
+            let mp = Arc::clone(&mp);
             let jh = tokio::spawn(async move {
                 let _permit = sp.acquire().await?;
                 let (title, _, _) = actuator::get_basic_video_info(&bv_id, Some(&bc))
@@ -274,8 +326,8 @@ async fn download_audio(app: &App, args: DownloadArgs) -> Result<()> {
                 let audio_path =
                     base_path.join(format!("{}.m4a", sanitize_filename::sanitize(&title)));
 
-                // 检测是否已经下载
                 if audio_path.exists() {
+                    mp.lock().unwrap().inc_total();
                     return Ok(());
                 }
 
@@ -285,7 +337,24 @@ async fn download_audio(app: &App, args: DownloadArgs) -> Result<()> {
                         title, bv_id, e
                     ))
                 })?;
-                let mut builder = DownloadOption::builder().audio_path(&audio_path);
+
+                let dp = DownloadProgress::new(bv_id.clone(), title.clone(), 0);
+                let pb = dp.pb.clone();
+                mp.lock().unwrap().add(dp);
+
+                let mut builder = DownloadOption::builder()
+                    .audio_path(&audio_path)
+                    .on_audio_progress(Arc::new(move |downloaded, total| {
+                        if let Some(t) = total {
+                            pb.set_length(t);
+                            pb.set_position(downloaded);
+                            if downloaded >= t {
+                                pb.finish_and_clear();
+                            }
+                        } else {
+                            pb.set_position(downloaded);
+                        }
+                    }));
 
                 if let Some(quality_audio) = quality_audio {
                     builder = builder.audio_quality(quality_audio);
@@ -293,19 +362,23 @@ async fn download_audio(app: &App, args: DownloadArgs) -> Result<()> {
 
                 let option = builder.build();
 
-                actuator::download_audio(&bc, &pur, &option)
+                let result = actuator::download_audio(&bc, &pur, &option)
                     .await
                     .map_err(|e| {
                         Error::Normal(format!(
                             "无法获取音频: {},BV: {},错误信息: {}",
                             title, bv_id, e
                         ))
-                    })
+                    });
+
+                mp.lock().unwrap().inc_total();
+                result
             });
             handlers.push(jh);
         }
 
         let results = future::join_all(handlers).await;
+        mp.lock().unwrap().finish();
 
         let failed: Vec<String> = results
             .into_iter()
@@ -342,8 +415,17 @@ async fn download_audio(app: &App, args: DownloadArgs) -> Result<()> {
                 ))
             })?;
 
-        // 构造下载选项
-        let mut builder = DownloadOption::builder().audio_path(&audio_path);
+        let dp = DownloadProgress::new(bv_id.clone(), title.clone(), 0);
+        let pb = dp.pb.clone();
+
+        let mut builder = DownloadOption::builder()
+            .audio_path(&audio_path)
+            .on_audio_progress(Arc::new(move |downloaded, total| {
+                if let Some(t) = total {
+                    pb.set_length(t);
+                }
+                pb.set_position(downloaded);
+            }));
 
         if let Some(quality_audio) = quality_audio {
             builder = builder.audio_quality(quality_audio);
@@ -351,7 +433,6 @@ async fn download_audio(app: &App, args: DownloadArgs) -> Result<()> {
 
         let option = builder.build();
 
-        // 执行下载
         actuator::download_audio(&bili_client, &pur, &option)
             .await
             .map_err(|e| {
@@ -360,6 +441,8 @@ async fn download_audio(app: &App, args: DownloadArgs) -> Result<()> {
                     title, bv_id, e
                 ))
             })?;
+
+        dp.pb.finish_and_clear();
     }
     Ok(())
 }

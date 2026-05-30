@@ -30,6 +30,7 @@ impl PlayUrlResponse {
             .build(bili_client)
             .await?;
         let url = format!("{}?{}", VIDEO_DOWNLOAD_URL, vrp.to_query_string());
+        // TODO: 老视频不兼容PlayUrlResponse这个结构
         Ok(bili_client.get(&url).send().await?.json().await?)
     }
 
@@ -66,6 +67,7 @@ pub struct VideoData {
     pub cur_language: String,
     #[serde(rename = "cur_production_type")]
     pub cur_production_type: i64,
+    // 老视频的信息中无此字段，直接抛出错误
     pub dash: Dash,
     pub format: String,
     pub from: String,

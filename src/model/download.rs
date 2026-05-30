@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::{path::Path, sync::Arc};
 
 use crate::model::quality::{AudioQuality, VideoEncode, VideoQuality};
 
@@ -19,6 +19,8 @@ pub struct DownloadOption<'a> {
     pub video_encode: Option<VideoEncode>,
     pub audio_quality: Option<AudioQuality>,
     pub ffmpeg_path: Option<&'a Path>,
+    pub on_video_progress: Option<ProgressCallback>,
+    pub on_audio_progress: Option<ProgressCallback>,
 }
 
 impl<'a> DownloadOption<'a> {
@@ -26,6 +28,8 @@ impl<'a> DownloadOption<'a> {
         DownloadOptionBuilder::new()
     }
 }
+
+pub type ProgressCallback = Arc<dyn Fn(u64, Option<u64>) + Send + Sync>;
 
 pub struct DownloadOptionBuilder<'a> {
     audio_path: Option<&'a Path>,
@@ -35,6 +39,8 @@ pub struct DownloadOptionBuilder<'a> {
     video_encode: Option<VideoEncode>,
     audio_quality: Option<AudioQuality>,
     ffmpeg_path: Option<&'a Path>,
+    on_video_progress: Option<ProgressCallback>,
+    on_audio_progress: Option<ProgressCallback>,
 }
 
 impl<'a> DownloadOptionBuilder<'a> {
@@ -47,44 +53,46 @@ impl<'a> DownloadOptionBuilder<'a> {
             video_encode: None,
             audio_quality: None,
             ffmpeg_path: None,
+            on_video_progress: None,
+            on_audio_progress: None,
         }
     }
-
     pub fn audio_path(mut self, audio_path: &'a Path) -> Self {
         self.audio_path = Some(audio_path);
         self
     }
-
     pub fn video_path(mut self, video_path: &'a Path) -> Self {
         self.video_path = Some(video_path);
         self
     }
-
     pub fn output(mut self, output: &'a Path) -> Self {
         self.output = Some(output);
         self
     }
-
     pub fn video_quality(mut self, video_quality: VideoQuality) -> Self {
         self.video_quality = Some(video_quality);
         self
     }
-
     pub fn video_encode(mut self, video_encode: VideoEncode) -> Self {
         self.video_encode = Some(video_encode);
         self
     }
-
     pub fn audio_quality(mut self, audio_quality: AudioQuality) -> Self {
         self.audio_quality = Some(audio_quality);
         self
     }
-
     pub fn ffmpeg_path(mut self, ffmpeg_path: &'a Path) -> Self {
         self.ffmpeg_path = Some(ffmpeg_path);
         self
     }
-
+    pub fn on_video_progress(mut self, on_progress: ProgressCallback) -> Self {
+        self.on_video_progress = Some(on_progress);
+        self
+    }
+    pub fn on_audio_progress(mut self, on_progress: ProgressCallback) -> Self {
+        self.on_audio_progress = Some(on_progress);
+        self
+    }
     pub fn build(self) -> DownloadOption<'a> {
         DownloadOption {
             audio_path: self.audio_path,
@@ -94,6 +102,8 @@ impl<'a> DownloadOptionBuilder<'a> {
             video_encode: self.video_encode,
             audio_quality: self.audio_quality,
             ffmpeg_path: self.ffmpeg_path,
+            on_video_progress: self.on_video_progress,
+            on_audio_progress: self.on_audio_progress,
         }
     }
 }
