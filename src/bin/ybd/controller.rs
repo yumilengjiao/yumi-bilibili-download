@@ -111,8 +111,8 @@ async fn download_video(app: &App, args: DownloadArgs) -> Result<()> {
                 let audio_tmp = video_path.with_extension("audio.tmp");
 
                 // 创建进度条，clone pb 给 callback
-                let dp_video = DownloadProgress::new(format!("{} [视频]", bv_id), title.clone(), 0);
-                let dp_audio = DownloadProgress::new(format!("{} [音频]", bv_id), title.clone(), 0);
+                let dp_video = DownloadProgress::new(format!("{} [视频]", bv_id), 0);
+                let dp_audio = DownloadProgress::new(format!("{} [音频]", bv_id), 0);
                 let pb_video = dp_video.pb.clone();
                 let pb_audio = dp_audio.pb.clone();
                 mp.lock().unwrap().add(dp_video);
@@ -218,8 +218,8 @@ async fn download_video(app: &App, args: DownloadArgs) -> Result<()> {
         let video_tmp = video_path.with_extension("video.tmp");
         let audio_tmp = video_path.with_extension("audio.tmp");
 
-        let dp_video = DownloadProgress::new(format!("{} [视频]", bv_id), title.clone(), 0);
-        let dp_audio = DownloadProgress::new(format!("{} [音频]", bv_id), title.clone(), 0);
+        let dp_video = DownloadProgress::new(format!("{} [视频]", bv_id), 0);
+        let dp_audio = DownloadProgress::new(format!("{} [音频]", bv_id), 0);
         let pb_video = dp_video.pb.clone();
         let pb_audio = dp_audio.pb.clone();
 
@@ -338,7 +338,7 @@ async fn download_audio(app: &App, args: DownloadArgs) -> Result<()> {
                     ))
                 })?;
 
-                let dp = DownloadProgress::new(bv_id.clone(), title.clone(), 0);
+                let dp = DownloadProgress::new(bv_id.clone(), 0);
                 let pb = dp.pb.clone();
                 mp.lock().unwrap().add(dp);
 
@@ -415,7 +415,7 @@ async fn download_audio(app: &App, args: DownloadArgs) -> Result<()> {
                 ))
             })?;
 
-        let dp = DownloadProgress::new(bv_id.clone(), title.clone(), 0);
+        let dp = DownloadProgress::new(bv_id.clone(), 0);
         let pb = dp.pb.clone();
 
         let mut builder = DownloadOption::builder()

@@ -8,30 +8,15 @@ pub struct DownloadProgress {
 }
 
 impl DownloadProgress {
-    pub fn new(id: String, title: String, total_size: u64) -> Self {
+    pub fn new(id: String, total_size: u64) -> Self {
         let pb = ProgressBar::new(total_size);
-        let short_title = {
-            let mut result = String::new();
-            let mut width = 0;
-            for c in title.chars() {
-                let cw = if (c as u32) > 0x7F { 2 } else { 1 };
-                if width + cw > 12 {
-                    result.push_str("...");
-                    break;
-                }
-                result.push(c);
-                width += cw;
-            }
-            result
-        };
         pb.set_style(
             ProgressStyle::with_template(
-                "{spinner:.green} [{bar:25.cyan/blue}] {bytes}/{total_bytes} ({eta}) {msg}",
+                "{spinner:.green} [{wide_bar:.cyan/dim}] {bytes}/{total_bytes} ({eta})",
             )
             .unwrap()
             .progress_chars("█▓▒░  "),
         );
-        pb.set_message(short_title);
         Self { id, pb }
     }
 

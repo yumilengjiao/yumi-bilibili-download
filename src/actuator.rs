@@ -192,7 +192,6 @@ pub async fn get_basic_video_info(
     };
 
     if resp["code"].as_i64().unwrap_or(-1) != 0 {
-        println!("{:#?}", resp["code"]);
         return Err(Error::Normal(format!(
             "获取视频信息失败: {}",
             resp["message"]
