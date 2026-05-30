@@ -6,8 +6,10 @@ use yumi_bilibili_download::{
     model::quality::{AudioQuality, VideoEncode, VideoQuality},
 };
 
+const VERSION: &str = concat!(env!("CARGO_PKG_VERSION"), "-", env!("GIT_HASH"));
+
 #[derive(Parser, Debug)]
-#[command(version, about, long_about = None)]
+#[command(version = VERSION, about, long_about = None)]
 pub struct Cmd {
     #[command(subcommand)]
     pub subcommand: Commands,
