@@ -3,6 +3,24 @@ name = "yumi-bilibili-download"
 version = "0.1.0"
 edition = "2024"
 description = "A tool for downloading Bilibili resources"
+license = "MIT"
+repository = "https://github.com/yumilengjiao/yumi-bilibili-download"
+homepage = "https://github.com/yumilengjiao/yumi-bilibili-download"
+readme = "README.md"
+rust-version = "1.95"
+authors = ["玉米棱角"]
+keywords = ["bilibili", "download", "video", "cli"]
+
+categories = ["command-line-utilities"]
+
+build = "build.rs"
+
+[profile.release]
+strip = true
+opt-level = 3
+lto = true
+codegen-units = 1
+panic = "abort"
 
 [dependencies]
 reqwest = { version = "0.13", features = [
