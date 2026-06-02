@@ -8,7 +8,7 @@ repository = "https://github.com/yumilengjiao/yumi-bilibili-download"
 homepage = "https://github.com/yumilengjiao/yumi-bilibili-download"
 readme = "README.md"
 rust-version = "1.95"
-authors = ["玉米棱角"]
+authors = ["yumilengjiao"]
 keywords = ["bilibili", "download", "video", "cli"]
 
 categories = ["command-line-utilities"]

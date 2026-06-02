@@ -40,6 +40,10 @@ async fn run() -> Result<bool> {
             let app = App::new().await?;
             controller::start_task(&app, args).await?;
         }
+        Commands::Show(args) => {
+            let app = App::new().await?;
+            controller::show_video_info(&app, &args.url).await?;
+        }
     }
     Ok(true)
 }

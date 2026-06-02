@@ -1,7 +1,9 @@
 use std::{env, sync::Arc};
 
+use colored::Colorize;
 use futures::future;
 use reqwest::Client;
+use serde_json::Value;
 use tokio::sync::Semaphore;
 use yumi_bilibili_download::{
     actuator::{self, Mode, get_basic_collection_info},
@@ -9,7 +11,7 @@ use yumi_bilibili_download::{
     error::{Error, Result},
     model::{download::DownloadOption, quality::VideoEncode, video::PlayUrlResponse},
     progress::{DownloadMutiProgess, DownloadProgress},
-    url::UA,
+    url::{UA, VIDEO_INFO},
     util::{extract_bv_id, extract_media_id},
 };
 
@@ -21,6 +23,45 @@ pub async fn start_task(app: &App, args: DownloadArgs) -> Result<()> {
         Mode::Cover => download_cover(app, args).await,
         Mode::Video => download_video(app, args).await,
     }
+}
+
+pub async fn show_video_info(app: &App, url: &str) -> Result<()> {
+    let account = app
+        .account
+        .as_ref()
+        .ok_or(Error::Normal("未登录，请先登录".into()))
+        .and_then(|a| {
+            if a.is_expired() {
+                Err(Error::Normal("登录已过期，请重新登录".into()))
+            } else {
+                Ok(a)
+            }
+        })?;
+    let bv_id = extract_bv_id(url)?;
+    let bili_client = BiliClient::new(account)?;
+    let data: Value = bili_client
+        .get(VIDEO_INFO)
+        .header("Referer", "https://www.bilibili.com")
+        .query(&[("bvid", bv_id)])
+        .send()
+        .await?
+        .json()
+        .await?;
+    println!(
+        "\n\t{}",
+        "─────────────────────────────────────────────────────────────────────".blue()
+    );
+    println!("\tBV: {}", data["data"]["bvid"]);
+    println!("\t标题: {}", data["data"]["title"]);
+    println!("\t封面: {}", data["data"]["pic"]);
+    println!("\t描述: {}", data["data"]["desc"]);
+    println!("\t时长: {}s", data["data"]["duration"]);
+    println!("\t发布者: {}", data["data"]["owner"]["name"]);
+    println!(
+        "\t{}",
+        "─────────────────────────────────────────────────────────────────────\n".blue()
+    );
+    Ok(())
 }
 
 async fn download_video(app: &App, args: DownloadArgs) -> Result<()> {

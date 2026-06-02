@@ -21,6 +21,14 @@ pub enum Commands {
     Download(DownloadArgs),
     /// sign in your account of bilibili
     Login,
+    /// show detail of a specific video
+    Show(DetailArgs),
+}
+
+#[derive(Args, Debug)]
+pub struct DetailArgs {
+    /// URL of the resources
+    pub url: String,
 }
 
 #[derive(Args, Debug)]
