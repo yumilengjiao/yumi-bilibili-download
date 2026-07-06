@@ -2,7 +2,6 @@
 set -e
 
 REPO="yumilengjiao/yumi-bilibili-download"
-BIN_NAME="yumi-bilibili-download"
 INSTALL_NAME="ybd"
 INSTALL_DIR="${HOME}/.local/bin"
 
@@ -55,25 +54,25 @@ download() {
 
 TARGET=$(detect_target)
 VERSION=$(get_latest_version)
-
 if [ -z "$VERSION" ]; then
   echo "无法获取最新版本号" >&2
   exit 1
 fi
 
-FILE_NAME="${BIN_NAME}-${VERSION}-${TARGET}"
+# 实际 Release 资产文件名格式: ybd-x86_64-unknown-linux-gnu
+# 注意：不含版本号，前缀是 INSTALL_NAME(ybd) 而不是 crate 名(yumi-bilibili-download)
+FILE_NAME="${INSTALL_NAME}-${TARGET}"
 DOWNLOAD_URL="https://github.com/${REPO}/releases/download/${VERSION}/${FILE_NAME}"
 TMP_FILE=$(mktemp)
 
 echo "版本: ${VERSION}"
 echo "平台: ${TARGET}"
 echo "正在下载..."
-
 download "$DOWNLOAD_URL" "$TMP_FILE"
+
 chmod +x "$TMP_FILE"
 mkdir -p "$INSTALL_DIR"
 mv "$TMP_FILE" "${INSTALL_DIR}/${INSTALL_NAME}"
-
 echo "安装完成: ${INSTALL_DIR}/${INSTALL_NAME}"
 
 case ":${PATH}:" in
