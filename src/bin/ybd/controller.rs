@@ -12,7 +12,7 @@ use yumi_bilibili_download::{
         model::{download::DownloadOption, quality::VideoEncode, video::PlayUrlResponse},
         progress::{DownloadMutiProgess, DownloadProgress},
         url::{UA, VIDEO_INFO},
-        util::{extract_bv_id, extract_media_id},
+        util,
 };
 
 use crate::{app::App, clap_app::DownloadArgs};
@@ -43,7 +43,7 @@ pub async fn show_video_info(
                                 Ok(a)
                         }
                 })?;
-        let bv_id = extract_bv_id(url)?;
+        let bv_id = util::extract_bv_id(url)?;
         let bili_client = BiliClient::new(account)?;
         let data: Value = bili_client
                 .get(VIDEO_INFO)
@@ -104,7 +104,7 @@ async fn download_video(
                 })?;
         let bili_client = BiliClient::new(account)?;
         if batch {
-                let ml_id = extract_media_id(&url)?;
+                let ml_id = util::extract_media_id(&url)?;
                 let concurrencies = app.config.concurrencies;
                 let mut bv_ids = Vec::<String>::new();
                 let mut pn = 1usize;
@@ -265,7 +265,7 @@ async fn download_video(
                         )));
                 }
         } else {
-                let bv_id = extract_bv_id(&url)?;
+                let bv_id = util::extract_bv_id(&url)?;
                 let (title, _, _) = actuator::get_basic_video_info(&bv_id, Some(&bili_client))
                         .await
                         .map_err(|e| {
@@ -357,7 +357,7 @@ async fn download_audio(
         let bili_client = BiliClient::new(account)?;
 
         if batch {
-                let ml_id = extract_media_id(&url)?;
+                let ml_id = util::extract_media_id(&url)?;
                 let concurrencies = app.config.concurrencies;
                 let mut bv_ids = Vec::<String>::new();
                 let mut pn = 1usize;
@@ -394,8 +394,10 @@ async fn download_audio(
                         let sp = Arc::clone(&semaphore);
                         let mp = Arc::clone(&mp);
                         let jh = tokio::spawn(async move {
+                                // 信号量
                                 let _permit = sp.acquire().await?;
-                                let (title, _, _) =
+                                // 基础信息
+                                let (title, pic, _) =
                                         actuator::get_basic_video_info(&bv_id, Some(&bc))
                                                 .await
                                                 .map_err(|e| {
@@ -404,6 +406,7 @@ async fn download_audio(
                                                                 bv_id, e
                                                         ))
                                                 })?;
+                                // 拼接文件路径
                                 let audio_path = base_path.join(format!(
                                         "{}.m4a",
                                         sanitize_filename::sanitize(&title)
@@ -411,6 +414,14 @@ async fn download_audio(
 
                                 if audio_path.exists() {
                                         mp.lock().unwrap().inc_total();
+
+                                        if !util::check_cover_box(&audio_path)? {
+                                                let cover_data =
+                                                        util::download_cover_bytes(&bc, &pic)
+                                                                .await?;
+                                                util::add_cover_box(&audio_path, cover_data)?;
+                                        }
+
                                         return Ok(());
                                 }
 
@@ -455,6 +466,14 @@ async fn download_audio(
                                         });
 
                                 mp.lock().unwrap().inc_total();
+
+                                // 检查是否有封面,若没有则添加
+                                if result.is_ok() && !util::check_cover_box(&audio_path)? {
+                                        let cover_data =
+                                                util::download_cover_bytes(&bc, &pic).await?;
+                                        util::add_cover_box(&audio_path, cover_data)?;
+                                }
+
                                 result
                         });
                         handlers.push(jh);
@@ -483,8 +502,8 @@ async fn download_audio(
                         )));
                 }
         } else {
-                let bv_id = extract_bv_id(&url)?;
-                let (title, _, _) = actuator::get_basic_video_info(&bv_id, Some(&bili_client))
+                let bv_id = util::extract_bv_id(&url)?;
+                let (title, pic, _) = actuator::get_basic_video_info(&bv_id, Some(&bili_client))
                         .await
                         .map_err(|e| {
                                 Error::Normal(format!(
@@ -493,6 +512,17 @@ async fn download_audio(
                                 ))
                         })?;
                 let audio_path = output.join(format!("{}.m4a", title));
+
+                if audio_path.exists() {
+                        if !util::check_cover_box(&audio_path)? {
+                                let cover_data =
+                                        util::download_cover_bytes(&bili_client, &pic).await?;
+                                util::add_cover_box(&audio_path, cover_data)?;
+                        }
+
+                        return Ok(());
+                }
+
                 let pur = PlayUrlResponse::new(&bili_client, &bv_id)
                         .await
                         .map_err(|e| {
@@ -520,16 +550,29 @@ async fn download_audio(
 
                 let option = builder.build();
 
-                actuator::download_audio(&bili_client, &pur, &option)
+                let result = actuator::download_audio(&bili_client, &pur, &option)
                         .await
                         .map_err(|e| {
                                 Error::Normal(format!(
                                         "无法获取音频: {},BV: {},错误信息: {}",
                                         title, bv_id, e
                                 ))
-                        })?;
-
-                dp.pb.finish_and_clear();
+                        });
+                match result {
+                        | Ok(()) => {
+                                // 检查是否有封面,若没有则添加
+                                if !util::check_cover_box(&audio_path)? {
+                                        let cover_data =
+                                                util::download_cover_bytes(&bili_client, &pic)
+                                                        .await?;
+                                        util::add_cover_box(&audio_path, cover_data)?;
+                                }
+                        },
+                        | Err(e) => {
+                                dp.pb.finish_and_clear();
+                                return Err(e);
+                        },
+                }
         }
         Ok(())
 }
@@ -563,7 +606,7 @@ async fn download_cover(
         let bili_client = BiliClient::new(account)?;
         tokio::fs::create_dir_all(&output).await?;
         if batch {
-                let ml_id = extract_media_id(&url)?;
+                let ml_id = util::extract_media_id(&url)?;
                 let concurrencies = app.config.concurrencies;
                 let mut bv_title_covers = Vec::<(String, String, String)>::new();
                 let mut pn = 1usize;
@@ -646,7 +689,7 @@ async fn download_cover(
                         )));
                 }
         } else {
-                let bv_id = extract_bv_id(&url)?;
+                let bv_id = util::extract_bv_id(&url)?;
                 let client = Client::builder().user_agent(UA).build()?;
                 let (title, cover, _) =
                         actuator::get_basic_video_info(&bv_id, Some(&bili_client)).await?;

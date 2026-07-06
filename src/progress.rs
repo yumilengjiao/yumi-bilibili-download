@@ -14,12 +14,12 @@ impl DownloadProgress {
         ) -> Self {
                 let pb = ProgressBar::new(total_size);
                 pb.set_style(
-            ProgressStyle::with_template(
-                "{spinner:.green} [{wide_bar:.cyan/dim}] {bytes}/{total_bytes} ({eta})",
-            )
-            .unwrap()
-            .progress_chars("█▓▒░  "),
-        );
+                        ProgressStyle::with_template(
+                                "{spinner:.green} [{wide_bar:.cyan/dim}] {bytes}/{total_bytes} ({eta})",
+                        )
+                        .unwrap()
+                        .progress_chars("█▓▒░  ")
+                );
                 Self { id, pb }
         }
 

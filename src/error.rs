@@ -21,6 +21,8 @@ pub enum Error {
         Build(String),
         #[error("norlmal error: {0}")]
         Normal(String),
+        #[error("mp4meta error: {0}")]
+        Mp4metaError(#[from] mp4ameta::Error),
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
