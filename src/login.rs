@@ -60,28 +60,51 @@ async fn query_login_state(
                 tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
                 let resp = client
                         .get(VALIDATE_QRCODE)
-                        .query(&[("qrcode_key", &qrcode_key)])
+                        .query(&[("qrcode_key", qrcode_key)])
                         .send()
                         .await?;
 
-                let headers = resp.headers();
+                let cookies: Vec<String> = resp
+                        .headers()
+                        .get_all("set-cookie")
+                        .iter()
+                        .filter_map(|v| v.to_str().ok().map(|s| s.to_string()))
+                        .collect();
+
                 let resp_value: Value = resp.json().await?;
 
                 match resp_value["data"]["code"].as_i64().unwrap_or(-1) {
                         | 0 => {
-                                let url = resp_value["data"]["url"].as_str().unwrap_or("");
-                                let sessdata = headers
-                                        .get("set-cookie")
-                                        .unwrap()
-                                        .to_str()
-                                        .map_err(|e| Error::Normal(e.to_string()))?
-                                        .split("SESSDATA=")
-                                        .nth(1)
-                                        .unwrap()
-                                        .split("&")
-                                        .next()
-                                        .unwrap()
+                                let user_id = cookies
+                                        .iter()
+                                        .find(|c| c.starts_with("DedeUserID="))
+                                        .and_then(|c| c.split(';').next())
+                                        .and_then(|c| c.split('=').nth(1))
+                                        .ok_or_else(|| Error::Normal("未找到 DedeUserID".into()))?
                                         .to_string();
+
+                                let sessdata_cookie = cookies
+                                        .iter()
+                                        .find(|c| c.starts_with("SESSDATA="))
+                                        .ok_or_else(|| Error::Normal("未找到 SESSDATA".into()))?;
+
+                                let sessdata = sessdata_cookie
+                                        .split(';')
+                                        .next()
+                                        .and_then(|s| s.split('=').nth(1))
+                                        .ok_or_else(|| Error::Normal("SESSDATA 格式异常".into()))?
+                                        .to_string();
+
+                                let expire_time = sessdata_cookie
+                                        .split("Expires=")
+                                        .nth(1)
+                                        .and_then(|s| s.split(';').next())
+                                        .and_then(|s| httpdate::parse_http_date(s.trim()).ok())
+                                        .ok_or_else(|| {
+                                                Error::Normal("未能解析 SESSDATA 过期时间".into())
+                                        })?;
+
+                                return Ok((user_id, sessdata, expire_time));
                         },
                         | 86101 => print!("\r等待扫码..."),
                         | 86090 => print!("\r已扫码，请在手机上确认..."),
