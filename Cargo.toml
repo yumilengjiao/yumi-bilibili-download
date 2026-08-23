@@ -1,6 +1,6 @@
 [package]
 name = "yumi-bilibili-download"
-version = "0.1.0"
+version = "0.2.1"
 edition = "2024"
 description = "A tool for downloading Bilibili resources"
 license = "MIT"
@@ -8,7 +8,7 @@ repository = "https://github.com/yumilengjiao/yumi-bilibili-download"
 homepage = "https://github.com/yumilengjiao/yumi-bilibili-download"
 readme = "README.md"
 rust-version = "1.95"
-authors = ["yumilengjiao"]
+authors = ["yumilengjiao <yumilengjiao@gmail.com>"]
 keywords = ["bilibili", "download", "video", "cli"]
 
 categories = ["command-line-utilities"]
