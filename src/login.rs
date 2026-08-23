@@ -1,4 +1,4 @@
-use std::time::{Duration, SystemTime};
+use std::time::SystemTime;
 
 use qrcode::{QrCode, render::unicode};
 use reqwest::Client;
@@ -8,7 +8,7 @@ use crate::{
         client::BiliClient,
         error::{Error, Result},
         model::account::Account,
-        url::{LOGIN, UA, VALIDATE_QRCODE, WBI},
+        url::{LOGIN, SESSDATA, UA, VALIDATE_QRCODE, WBI},
 };
 
 /// 获取用户账户信息
@@ -58,49 +58,30 @@ async fn query_login_state(
         // 轮询登录状态
         loop {
                 tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
-                let resp: Value = client
+                let resp = client
                         .get(VALIDATE_QRCODE)
                         .query(&[("qrcode_key", &qrcode_key)])
                         .send()
-                        .await?
-                        .json()
                         .await?;
 
-                match resp["data"]["code"].as_i64().unwrap_or(-1) {
+                let headers = resp.headers();
+                let resp_value: Value = resp.json().await?;
+
+                match resp_value["data"]["code"].as_i64().unwrap_or(-1) {
                         | 0 => {
-                                let url = resp["data"]["url"].as_str().unwrap_or("");
-                                let user_id = url
-                                        .split("DedeUserID=")
-                                        .nth(1)
-                                        .unwrap_or("")
-                                        .split("&")
-                                        .next()
-                                        .unwrap_or("")
-                                        .to_string();
-
-                                let exp = url
-                                        .split("Expires=")
-                                        .nth(1)
-                                        .unwrap_or("")
-                                        .split("&")
-                                        .next()
-                                        .unwrap_or("")
-                                        .to_string();
-
-                                let sessdata = url
+                                let url = resp_value["data"]["url"].as_str().unwrap_or("");
+                                let sessdata = headers
+                                        .get("set-cookie")
+                                        .unwrap()
+                                        .to_str()
+                                        .map_err(|e| Error::Normal(e.to_string()))?
                                         .split("SESSDATA=")
                                         .nth(1)
-                                        .unwrap_or("")
-                                        .split('&')
+                                        .unwrap()
+                                        .split("&")
                                         .next()
-                                        .unwrap_or("")
+                                        .unwrap()
                                         .to_string();
-                                println!("✓ 登录成功！\n");
-                                let ts: u64 = exp
-                                        .parse::<u64>()
-                                        .map_err(|e| Error::Normal(e.to_string()))?;
-                                let exp = SystemTime::UNIX_EPOCH + Duration::from_secs(ts);
-                                return Ok((user_id, sessdata, exp));
                         },
                         | 86101 => print!("\r等待扫码..."),
                         | 86090 => print!("\r已扫码，请在手机上确认..."),

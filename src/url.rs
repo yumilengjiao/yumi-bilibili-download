@@ -1,5 +1,8 @@
 // 登录
 pub const LOGIN: &str = "https://passport.bilibili.com/x/passport-login/web/qrcode/generate";
+
+pub const SESSDATA: &str = "https://passport.bilibili.cn/x/passport-login/web/sso/set";
+
 pub const VALIDATE_QRCODE: &str = "https://passport.bilibili.com/x/passport-login/web/qrcode/poll";
 
 // WBI 签名密钥
