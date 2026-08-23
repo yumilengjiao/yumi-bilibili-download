@@ -2,7 +2,6 @@
 set -e
 
 REPO="yumilengjiao/yumi-bilibili-download"
-BIN_NAME="yumi-bilibili-download"
 INSTALL_NAME="ybd"
 INSTALL_DIR="${HOME}/.local/bin"
 
@@ -28,15 +27,13 @@ detect_target() {
 
 get_latest_version() {
   if command -v curl >/dev/null 2>&1; then
-    curl -fsSLI "https://github.com/${REPO}/releases/latest" |
-      grep -i "^location:" |
-      sed 's/.*\/tag\///' |
-      tr -d '\r'
+    curl -fsSL "https://api.github.com/repos/${REPO}/releases/latest" |
+      grep '"tag_name":' |
+      sed -E 's/.*"tag_name": *"([^"]+)".*/\1/'
   elif command -v wget >/dev/null 2>&1; then
-    wget -q --server-response --spider "https://github.com/${REPO}/releases/latest" 2>&1 |
-      grep -i "location:" |
-      sed 's/.*\/tag\///' |
-      tr -d '\r'
+    wget -qO- "https://api.github.com/repos/${REPO}/releases/latest" |
+      grep '"tag_name":' |
+      sed -E 's/.*"tag_name": *"([^"]+)".*/\1/'
   else
     echo "需要 curl 或 wget" >&2
     exit 1
@@ -61,7 +58,7 @@ if [ -z "$VERSION" ]; then
   exit 1
 fi
 
-FILE_NAME="${BIN_NAME}-${VERSION}-${TARGET}"
+FILE_NAME="${INSTALL_NAME}-${TARGET}"
 DOWNLOAD_URL="https://github.com/${REPO}/releases/download/${VERSION}/${FILE_NAME}"
 TMP_FILE=$(mktemp)
 
