@@ -1,4 +1,9 @@
+//! 下载进度条与多任务进度管理模块
+//!
+//! 基于 `indicatif` 实现单任务和多任务并发下载进度可视化。
+
 use std::{collections::HashMap, time::Duration};
+
 
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 

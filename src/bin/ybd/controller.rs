@@ -1,4 +1,9 @@
+//! 命令行业务控制器
+//!
+//! 负责视频、音频、封面下载及视频信息查询的具体流程编排与并发调度。
+
 use std::{env, sync::Arc};
+
 
 use colored::Colorize;
 use futures::future;

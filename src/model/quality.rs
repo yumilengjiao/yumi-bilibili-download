@@ -1,4 +1,7 @@
+//! 视频与音频清晰度及编码枚举定义
+
 use clap::ValueEnum;
+
 
 #[derive(ValueEnum, Copy, Clone, Debug, PartialEq, Eq)]
 pub enum VideoQuality {

@@ -1,4 +1,9 @@
+//! 辅助工具模块
+//!
+//! 包含 BV 号/媒体列表 ID 提取、音频封面内嵌（mp4ameta）及格式检测等实用工具。
+
 use std::path::Path;
+
 
 use mp4ameta::{Img, Tag};
 use regex::Regex;

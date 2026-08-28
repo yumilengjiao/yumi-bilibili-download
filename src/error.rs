@@ -1,4 +1,9 @@
+//! 错误类型与异常处理模块
+//!
+//! 定义库全局使用的错误枚举与通用错误输出格式化函数。
+
 use std::io;
+
 
 use colored::Colorize;
 use thiserror::Error;

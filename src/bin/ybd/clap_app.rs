@@ -1,4 +1,9 @@
+//! 命令行参数解析结构定义
+//!
+//! 基于 `clap` 定义子命令、参数选项以及版本和帮助信息。
+
 use std::path::PathBuf;
+
 
 use clap::{Args, Parser, Subcommand};
 use yumi_bilibili_download::{

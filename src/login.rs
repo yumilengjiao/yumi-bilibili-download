@@ -1,4 +1,9 @@
+//! 用户登录与鉴权模块
+//!
+//! 提供二维码生成与渲染、登录状态轮询以及 WBI 签名密钥提取功能。
+
 use std::time::SystemTime;
+
 
 use qrcode::{QrCode, render::unicode};
 use reqwest::Client;

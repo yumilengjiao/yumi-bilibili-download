@@ -1,4 +1,9 @@
+//! HTTP 客户端封装模块
+//!
+//! 包装带有 Bilibili 用户鉴权凭证（Cookie/SESSDATA 与 Referer）的请求客户端。
+
 use reqwest::Client;
+
 
 use crate::{error::Result, model::account::Account, url::UA};
 

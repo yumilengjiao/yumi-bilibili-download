@@ -1,4 +1,9 @@
+//! 本地认证缓存模块
+//!
+//! 负责从本地磁盘读写与持久化用户登录会话（SESSDATA 等凭证）。
+
 use std::{fs::File, path::Path};
+
 
 use yumi_bilibili_download::{
         error::{Error, Result},

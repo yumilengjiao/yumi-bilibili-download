@@ -1,4 +1,7 @@
+//! Bilibili 常用 API 接口常量定义模块
+
 // 登录
+
 pub const LOGIN: &str = "https://passport.bilibili.com/x/passport-login/web/qrcode/generate";
 
 pub const SESSDATA: &str = "https://passport.bilibili.cn/x/passport-login/web/sso/set";

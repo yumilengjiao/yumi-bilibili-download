@@ -1,4 +1,9 @@
+//! 核心执行器模块
+//!
+//! 包含视频、音频、封面下载及使用 ffmpeg 进行音视频合并的高层 API。
+
 use std::path::Path;
+
 
 use clap::ValueEnum;
 use futures::StreamExt;

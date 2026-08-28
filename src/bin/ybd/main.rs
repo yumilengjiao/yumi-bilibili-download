@@ -1,4 +1,9 @@
+//! 命令行工具入口
+//!
+//! 解析命令行参数并分发至对应的控制器逻辑。
+
 mod app;
+
 mod cache;
 mod clap_app;
 mod config;

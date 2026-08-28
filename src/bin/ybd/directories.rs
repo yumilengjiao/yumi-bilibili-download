@@ -1,4 +1,9 @@
+//! 跨平台目录与路径管理模块
+//!
+//! 根据系统标准目录及环境变量解析配置、缓存及默认媒体下载路径。
+
 use std::{
+
         env,
         path::{Path, PathBuf},
         sync::LazyLock,

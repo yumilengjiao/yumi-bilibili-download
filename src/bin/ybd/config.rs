@@ -1,4 +1,9 @@
+//! 本地配置解析模块
+//!
+//! 负责从配置文件加载并发数等运行时设置。
+
 use std::{fs::File, num::NonZeroUsize, path::Path, thread};
+
 
 use serde::{Deserialize, Serialize};
 use yumi_bilibili_download::error::Result;

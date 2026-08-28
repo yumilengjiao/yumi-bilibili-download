@@ -1,4 +1,9 @@
+//! 下载配置与选项模型
+//!
+//! 提供下载任务参数构造器（如输出路径、音画质量选择、进度回调与 ffmpeg 配置）。
+
 use std::{path::Path, sync::Arc};
+
 
 use crate::model::quality::{AudioQuality, VideoEncode, VideoQuality};
 
