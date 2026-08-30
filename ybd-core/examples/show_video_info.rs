@@ -1,6 +1,6 @@
 use std::error::Error;
 
-use yumi_bilibili_download::{
+use ybd_core::{
         client::BiliClient, login, model::video::PlayUrlResponse, util::extract_bv_id,
 };
 #[tokio::main]

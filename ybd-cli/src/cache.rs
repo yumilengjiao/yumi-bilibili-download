@@ -5,7 +5,7 @@
 use std::{fs::File, path::Path};
 
 
-use yumi_bilibili_download::{
+use ybd_core::{
         error::{Error, Result},
         model::account::Account,
 };

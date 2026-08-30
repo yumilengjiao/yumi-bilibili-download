@@ -2,7 +2,7 @@ use std::{error::Error, path::Path};
 
 use reqwest::Client;
 use tokio::fs;
-use yumi_bilibili_download::{
+use ybd_core::{
         actuator::{download_cover, get_basic_video_info},
         url::UA,
 };

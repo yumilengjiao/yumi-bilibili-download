@@ -1,6 +1,6 @@
 use std::error::Error;
 
-use yumi_bilibili_download::{actuator::get_basic_collection_info, util::extract_media_id};
+use ybd_core::{actuator::get_basic_collection_info, util::extract_media_id};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {

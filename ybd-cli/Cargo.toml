@@ -1,0 +1,31 @@
+#:schema https://json.schemastore.org/cargo.json
+
+[package]
+name = "ybd-cli"
+version.workspace = true
+edition.workspace = true
+description = "Bilibili 资源下载命令行工具"
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+keywords.workspace = true
+categories.workspace = true
+build = "build.rs"
+
+[[bin]]
+name = "ybd"
+path = "src/main.rs"
+
+[dependencies]
+ybd-core = { path = "../ybd-core" }
+clap.workspace = true
+etcetera.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+reqwest.workspace = true
+tokio.workspace = true
+colored.workspace = true
+futures.workspace = true
+sanitize-filename.workspace = true

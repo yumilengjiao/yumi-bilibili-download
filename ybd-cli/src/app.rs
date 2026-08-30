@@ -2,7 +2,7 @@
 //!
 //! 整合全局配置与当前已保存的用户认证信息。
 
-use yumi_bilibili_download::{error::Result, model::account::Account};
+use ybd_core::{error::Result, model::account::Account};
 
 
 use crate::{cache::load_user_from_file, config::Config, directories::APP_PATH};

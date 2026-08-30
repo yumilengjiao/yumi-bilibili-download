@@ -1,6 +1,6 @@
 use std::{error::Error, path::Path};
 use tokio::fs;
-use yumi_bilibili_download::{
+use ybd_core::{
         actuator,
         client::BiliClient,
         login,

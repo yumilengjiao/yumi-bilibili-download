@@ -1,7 +1,7 @@
 use std::error::Error;
 
 use serde_json::Value;
-use yumi_bilibili_download::{
+use ybd_core::{
         client::BiliClient, login, model::param::VideoRequestParamBuilder, url::VIDEO_DOWNLOAD_URL,
         util::extract_bv_id,
 };

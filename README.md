@@ -6,6 +6,13 @@
 
 ⚠️ 本项目仅用于学习、研究和技术交流
 
+## 仓库结构
+
+本项目为 Cargo workspace，包含两个 crate：
+
+- `ybd-core`：核心库（登录、视频解析、下载、进度等）
+- `ybd-cli`：命令行工具（二进制名为 `ybd`）
+
 ---
 
 ## 使用
@@ -14,15 +21,15 @@
 
 ```bash
 # 查看下载用法
-ybd download --help 
+ybd download --help
 # 扫描二维码登录账户
-yumi login
+ybd login
 
-yumi download BVxxxx/包含BV号的链接
+ybd download BVxxxx/包含BV号的链接
 
-yumi audio BVxxxx/包含BV号的链接
+ybd audio BVxxxx/包含BV号的链接
 
-yumi cover BVxxxx/包含BV号的链接
+ybd cover BVxxxx/包含BV号的链接
 # 列表下载
 ybd download audio -b ml240xxxx/包含ml的链接
 ```

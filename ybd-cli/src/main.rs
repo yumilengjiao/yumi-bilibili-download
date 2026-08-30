@@ -13,7 +13,7 @@ mod directories;
 use std::process::ExitCode;
 
 use clap::Parser;
-use yumi_bilibili_download::{error::*, login};
+use ybd_core::{error::*, login};
 
 use crate::{
         app::App,

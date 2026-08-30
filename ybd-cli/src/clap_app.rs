@@ -6,7 +6,7 @@ use std::path::PathBuf;
 
 
 use clap::{Args, Parser, Subcommand};
-use yumi_bilibili_download::{
+use ybd_core::{
         actuator::Mode,
         model::quality::{AudioQuality, VideoEncode, VideoQuality},
 };
@@ -14,7 +14,7 @@ use yumi_bilibili_download::{
 const VERSION: &str = concat!(env!("CARGO_PKG_VERSION"), "-", env!("GIT_HASH"));
 
 #[derive(Parser, Debug)]
-#[command(version = VERSION, about, long_about = None)]
+#[command(name = "ybd", version = VERSION, about, long_about = None)]
 pub struct Cmd {
         #[command(subcommand)]
         pub subcommand: Commands,

@@ -2177,6 +2177,44 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3ad82d2a33cdc9674dc7465672f271e096168fcdbe0f799d9e6db8c5892679dc"
 
 [[package]]
+name = "ybd-cli"
+version = "0.2.2"
+dependencies = [
+ "clap",
+ "colored",
+ "etcetera",
+ "futures",
+ "reqwest",
+ "sanitize-filename",
+ "serde",
+ "serde_json",
+ "tokio",
+ "ybd-core",
+]
+
+[[package]]
+name = "ybd-core"
+version = "0.2.2"
+dependencies = [
+ "clap",
+ "colored",
+ "futures",
+ "httpdate",
+ "indicatif",
+ "md5",
+ "mp4ameta",
+ "qrcode",
+ "regex",
+ "reqwest",
+ "sanitize-filename",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tokio",
+ "urlencoding",
+]
+
+[[package]]
 name = "yoke"
 version = "0.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2197,30 +2235,6 @@ dependencies = [
  "quote",
  "syn 2.0.119",
  "synstructure",
-]
-
-[[package]]
-name = "yumi-bilibili-download"
-version = "0.2.2"
-dependencies = [
- "clap",
- "colored",
- "console",
- "etcetera",
- "futures",
- "httpdate",
- "indicatif",
- "md5",
- "mp4ameta",
- "qrcode",
- "regex",
- "reqwest",
- "sanitize-filename",
- "serde",
- "serde_json",
- "thiserror",
- "tokio",
- "urlencoding",
 ]
 
 [[package]]

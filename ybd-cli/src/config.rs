@@ -6,7 +6,7 @@ use std::{fs::File, num::NonZeroUsize, path::Path, thread};
 
 
 use serde::{Deserialize, Serialize};
-use yumi_bilibili_download::error::Result;
+use ybd_core::error::Result;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Config {

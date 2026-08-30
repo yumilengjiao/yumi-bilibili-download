@@ -2,7 +2,7 @@ use std::error::Error;
 
 use serde_json::Value;
 use tokio::fs;
-use yumi_bilibili_download::{client::BiliClient, login, url::VIDEO_INFO};
+use ybd_core::{client::BiliClient, login, url::VIDEO_INFO};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {

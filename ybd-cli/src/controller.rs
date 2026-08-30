@@ -10,7 +10,7 @@ use futures::future;
 use reqwest::Client;
 use serde_json::Value;
 use tokio::sync::Semaphore;
-use yumi_bilibili_download::{
+use ybd_core::{
         actuator::{self, Mode, get_basic_collection_info},
         client::BiliClient,
         error::{Error, Result},
