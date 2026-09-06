@@ -1,7 +1,7 @@
 #:schema https://json.schemastore.org/cargo.json
 
 [workspace]
-members = ["ybd-core", "ybd-cli"]
+members = ["ybd-core", "ybd-cli", "ybd-tui"]
 resolver = "3"
 
 [workspace.package]
@@ -38,6 +38,8 @@ colored = "3.1.1"
 futures = "0.3.32"
 indicatif = "0.18.4"
 mp4ameta = "0.13.0"
+ratatui = "0.29.0"
+crossterm = { version = "0.28.1", features = ["event-stream"] }
 httpdate = "1.0.3"
 
 [profile.release]

@@ -1,0 +1,32 @@
+#:schema https://json.schemastore.org/cargo.json
+
+[package]
+name = "ybd-tui"
+version.workspace = true
+edition.workspace = true
+description = "Bilibili 资源下载终端用户界面工具"
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[[bin]]
+name = "ybdtui"
+path = "src/main.rs"
+
+[dependencies]
+ybd-core = { path = "../ybd-core" }
+ratatui.workspace = true
+crossterm.workspace = true
+tokio.workspace = true
+etcetera.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+reqwest.workspace = true
+qrcode.workspace = true
+sanitize-filename.workspace = true
+futures.workspace = true
+thiserror.workspace = true
