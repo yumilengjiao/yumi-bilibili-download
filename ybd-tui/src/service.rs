@@ -707,7 +707,6 @@ pub async fn execute_download(
                         }
 
                         let _ = future::join_all(handlers).await;
-                        let _ = tx.send(AppEvent::TaskCompleted { task_id });
                         return;
                 }
         }
@@ -737,6 +736,14 @@ pub async fn execute_download(
         };
 
         let sanitized_title = sanitize_filename::sanitize(&title);
+
+        // 仅在获取到真实的视频信息后，才创建具体的单视频下载任务
+        let _ = tx.send(AppEvent::TaskCreated {
+                task_id,
+                bvid: bv_id.clone(),
+                title: title.clone(),
+                mode,
+        });
 
         match mode {
                 | DownloadMode::Cover => {

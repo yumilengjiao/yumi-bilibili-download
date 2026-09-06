@@ -301,24 +301,6 @@ impl App {
                 let video_encode = VIDEO_ENCODES[self.video_encode_idx];
                 let batch = self.batch;
 
-                let bvid = self
-                        .preview_info
-                        .as_ref()
-                        .map(|p| p.bvid.clone())
-                        .unwrap_or_else(|| url.clone());
-                let title = self
-                        .preview_info
-                        .as_ref()
-                        .map(|p| p.title.clone())
-                        .unwrap_or_else(|| format!("任务-{}", task_id));
-
-                let _ = self.tx.send(AppEvent::TaskCreated {
-                        task_id,
-                        bvid,
-                        title,
-                        mode,
-                });
-
                 let account = self.account.clone();
 
                 let tx = self.tx.clone();
