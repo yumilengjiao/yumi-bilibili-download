@@ -1,6 +1,6 @@
 //! Vim 交互与键盘事件调度模块
 //!
-//! 支持 Normal、Insert、Command 三种模式与极简 Vim 键位映射。
+//! 支持 Normal、Insert、Command 三种模式与 Emacs 风格行编辑快捷键（Ctrl+A, Ctrl+E, Ctrl+U, Ctrl+K 等）。
 
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
@@ -280,9 +280,112 @@ fn handle_insert_mode(
         app: &mut App,
         key: KeyEvent,
 ) {
+        // Emacs 风格 Control 快捷键处理
+        if key.modifiers.contains(KeyModifiers::CONTROL) {
+                match key.code {
+                        | KeyCode::Char('a') => {
+                                // Ctrl+A: 移动到行首
+                                app.cursor_pos = 0;
+                                return;
+                        },
+                        | KeyCode::Char('e') => {
+                                // Ctrl+E: 移动到行尾
+                                app.cursor_pos = get_active_input_len(app);
+                                return;
+                        },
+                        | KeyCode::Char('u') => {
+                                // Ctrl+U: 清空整行
+                                if let Some(input) = get_active_input_mut(app) {
+                                        input.clear();
+                                        app.cursor_pos = 0;
+                                }
+                                return;
+                        },
+                        | KeyCode::Char('k') => {
+                                // Ctrl+K: 删除光标至行尾内容
+                                let pos = app.cursor_pos;
+                                if let Some(input) = get_active_input_mut(app) {
+                                        if pos < input.len() {
+                                                input.truncate(pos);
+                                        }
+                                }
+                                return;
+                        },
+                        | KeyCode::Char('w') => {
+                                // Ctrl+W: 删除光标前的一个单词
+                                let pos = app.cursor_pos;
+                                if pos > 0 {
+                                        if let Some(input) = get_active_input_mut(app) {
+                                                let prefix = &input[..pos];
+                                                let trimmed = prefix.trim_end();
+                                                let new_pos = match trimmed.rfind(|c: char| {
+                                                        c.is_whitespace() || c == '/' || c == '?'
+                                                }) {
+                                                        | Some(idx) => idx + 1,
+                                                        | None => 0,
+                                                };
+                                                input.replace_range(new_pos..pos, "");
+                                                app.cursor_pos = new_pos;
+                                        }
+                                }
+                                return;
+                        },
+                        | KeyCode::Char('d') => {
+                                // Ctrl+D: 删除光标处的字符
+                                let pos = app.cursor_pos;
+                                if let Some(input) = get_active_input_mut(app) {
+                                        if pos < input.len() {
+                                                input.remove(pos);
+                                        }
+                                }
+                                return;
+                        },
+                        | KeyCode::Char('h') => {
+                                // Ctrl+H: 向前退格删除
+                                if app.cursor_pos > 0 {
+                                        let pos = app.cursor_pos - 1;
+                                        if let Some(input) = get_active_input_mut(app) {
+                                                if pos < input.len() {
+                                                        input.remove(pos);
+                                                }
+                                        }
+                                        app.cursor_pos = pos;
+                                }
+                                return;
+                        },
+                        | KeyCode::Char('b') => {
+                                // Ctrl+B: 向左移动一个字符
+                                if app.cursor_pos > 0 {
+                                        app.cursor_pos -= 1;
+                                }
+                                return;
+                        },
+                        | KeyCode::Char('f') => {
+                                // Ctrl+F: 向右移动一个字符
+                                let len = get_active_input_len(app);
+                                if app.cursor_pos < len {
+                                        app.cursor_pos += 1;
+                                }
+                                return;
+                        },
+                        | KeyCode::Char('c') => {
+                                // Ctrl+C: 退出编辑模式
+                                app.mode = VimMode::Normal;
+                                return;
+                        },
+                        | _ => {},
+                }
+        }
+
         match key.code {
                 | KeyCode::Esc => {
                         app.mode = VimMode::Normal;
+                },
+                | KeyCode::Home => {
+                        app.cursor_pos = 0;
+                },
+                | KeyCode::End => {
+                        app.cursor_pos = get_active_input_len(app);
                 },
                 | KeyCode::Enter => {
                         app.mode = VimMode::Normal;
@@ -315,6 +418,14 @@ fn handle_insert_mode(
                                 app.cursor_pos = pos;
                         }
                 },
+                | KeyCode::Delete => {
+                        let pos = app.cursor_pos;
+                        if let Some(input) = get_active_input_mut(app) {
+                                if pos < input.len() {
+                                        input.remove(pos);
+                                }
+                        }
+                },
                 | KeyCode::Char(c) => {
                         let pos = app.cursor_pos;
                         if let Some(input) = get_active_input_mut(app) {
@@ -330,6 +441,24 @@ fn handle_command_mode(
         app: &mut App,
         key: KeyEvent,
 ) {
+        if key.modifiers.contains(KeyModifiers::CONTROL) {
+                match key.code {
+                        | KeyCode::Char('u') | KeyCode::Char('c') => {
+                                app.mode = VimMode::Normal;
+                                app.command_input.clear();
+                                return;
+                        },
+                        | KeyCode::Char('a') => {
+                                return;
+                        },
+                        | KeyCode::Char('h') => {
+                                app.command_input.pop();
+                                return;
+                        },
+                        | _ => {},
+                }
+        }
+
         match key.code {
                 | KeyCode::Esc => {
                         app.mode = VimMode::Normal;
