@@ -26,9 +26,9 @@ pub async fn start_task(
         args: DownloadArgs,
 ) -> Result<()> {
         match args.mode {
-                | Mode::Audio => download_audio(app, args).await,
-                | Mode::Cover => download_cover(app, args).await,
-                | Mode::Video => download_video(app, args).await,
+                Mode::Audio => download_audio(app, args).await,
+                Mode::Cover => download_cover(app, args).await,
+                Mode::Video => download_video(app, args).await,
         }
 }
 
@@ -89,8 +89,8 @@ async fn download_video(
                 ..
         } = args;
         let dir = match output {
-                | Some(p) => p,
-                | None => env::current_dir()?,
+                Some(p) => p,
+                None => env::current_dir()?,
         };
         let output = dir;
         tokio::fs::create_dir_all(&output).await?;
@@ -252,9 +252,9 @@ async fn download_video(
                 let failed: Vec<String> = results
                         .into_iter()
                         .filter_map(|r| match r {
-                                | Ok(Ok(())) => None,
-                                | Ok(Err(e)) => Some(e.to_string()),
-                                | Err(e) => Some(e.to_string()),
+                                Ok(Ok(())) => None,
+                                Ok(Err(e)) => Some(e.to_string()),
+                                Err(e) => Some(e.to_string()),
                         })
                         .collect();
 
@@ -343,8 +343,8 @@ async fn download_audio(
                 ..
         } = args;
         let output = match output {
-                | Some(p) => p,
-                | None => env::current_dir()?,
+                Some(p) => p,
+                None => env::current_dir()?,
         };
         tokio::fs::create_dir_all(&output).await?;
         let account = app
@@ -489,9 +489,9 @@ async fn download_audio(
                 let failed: Vec<String> = results
                         .into_iter()
                         .filter_map(|r| match r {
-                                | Ok(Ok(())) => None,
-                                | Ok(Err(e)) => Some(e.to_string()),
-                                | Err(e) => Some(e.to_string()),
+                                Ok(Ok(())) => None,
+                                Ok(Err(e)) => Some(e.to_string()),
+                                Err(e) => Some(e.to_string()),
                         })
                         .collect();
 
@@ -563,7 +563,7 @@ async fn download_audio(
                                 ))
                         });
                 match result {
-                        | Ok(()) => {
+                        Ok(()) => {
                                 // 检查是否有封面,若没有则添加
                                 if !util::check_cover_box(&audio_path)? {
                                         let cover_data =
@@ -572,7 +572,7 @@ async fn download_audio(
                                         util::add_cover_box(&audio_path, cover_data)?;
                                 }
                         },
-                        | Err(e) => {
+                        Err(e) => {
                                 dp.pb.finish_and_clear();
                                 return Err(e);
                         },
@@ -589,8 +589,8 @@ async fn download_cover(
                 batch, output, url, ..
         } = args;
         let output = match output {
-                | Some(p) => p,
-                | None => env::current_dir()?,
+                Some(p) => p,
+                None => env::current_dir()?,
         };
         let account = app
                 .account
@@ -676,9 +676,9 @@ async fn download_cover(
                 let failed: Vec<String> = results
                         .into_iter()
                         .filter_map(|r| match r {
-                                | Ok(Ok(())) => None,
-                                | Ok(Err(e)) => Some(e.to_string()),
-                                | Err(e) => Some(e.to_string()),
+                                Ok(Ok(())) => None,
+                                Ok(Err(e)) => Some(e.to_string()),
+                                Err(e) => Some(e.to_string()),
                         })
                         .collect();
 

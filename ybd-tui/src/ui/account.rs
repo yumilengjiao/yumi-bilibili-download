@@ -134,7 +134,7 @@ pub fn render_account_view(
                 lines.push(Line::from(""));
 
                 match &app.qr_status {
-                        | QrLoginStatus::Idle => {
+                        QrLoginStatus::Idle => {
                                 lines.push(Line::from(vec![
                                         Span::styled("  提示: ", Style::default().fg(Color::Gray)),
                                         Span::styled(
@@ -151,13 +151,13 @@ pub fn render_account_view(
                                         ),
                                 ]));
                         },
-                        | QrLoginStatus::Generating => {
+                        QrLoginStatus::Generating => {
                                 lines.push(Line::from(vec![Span::styled(
                                         "  正在请求并生成二维码...",
                                         Style::default().fg(Color::Yellow),
                                 )]));
                         },
-                        | QrLoginStatus::WaitingScan { qr_text, .. } => {
+                        QrLoginStatus::WaitingScan { qr_text, .. } => {
                                 lines.push(Line::from(vec![Span::styled(
                                         "  请使用 哔哩哔哩 手机客户端 扫码登录：",
                                         Style::default().fg(Color::Cyan),
@@ -181,7 +181,7 @@ pub fn render_account_view(
                                         ),
                                 ]));
                         },
-                        | QrLoginStatus::ScannedWaitingConfirm => {
+                        QrLoginStatus::ScannedWaitingConfirm => {
                                 lines.push(Line::from(vec![Span::styled(
                                         "  已扫码，请在手机端确认登录...",
                                         Style::default()
@@ -189,7 +189,7 @@ pub fn render_account_view(
                                                 .add_modifier(Modifier::BOLD),
                                 )]));
                         },
-                        | QrLoginStatus::Success => {
+                        QrLoginStatus::Success => {
                                 lines.push(Line::from(vec![Span::styled(
                                         "  ✓ 登录成功！",
                                         Style::default()
@@ -197,13 +197,13 @@ pub fn render_account_view(
                                                 .add_modifier(Modifier::BOLD),
                                 )]));
                         },
-                        | QrLoginStatus::Expired => {
+                        QrLoginStatus::Expired => {
                                 lines.push(Line::from(vec![Span::styled(
                                         "  ✗ 二维码已过期，按 [ r ] 重新生成",
                                         Style::default().fg(Color::Red),
                                 )]));
                         },
-                        | QrLoginStatus::Error(e) => {
+                        QrLoginStatus::Error(e) => {
                                 lines.push(Line::from(vec![Span::styled(
                                         format!("  ✗ 登录异常: {}", e),
                                         Style::default().fg(Color::Red),

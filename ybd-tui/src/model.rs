@@ -16,40 +16,40 @@ pub enum Tab {
 impl Tab {
         pub fn next(self) -> Self {
                 match self {
-                        | Tab::Account => Tab::Download,
-                        | Tab::Download => Tab::Tasks,
-                        | Tab::Tasks => Tab::Settings,
-                        | Tab::Settings => Tab::Account,
+                        Tab::Account => Tab::Download,
+                        Tab::Download => Tab::Tasks,
+                        Tab::Tasks => Tab::Settings,
+                        Tab::Settings => Tab::Account,
                 }
         }
 
         pub fn prev(self) -> Self {
                 match self {
-                        | Tab::Account => Tab::Settings,
-                        | Tab::Download => Tab::Account,
-                        | Tab::Tasks => Tab::Download,
-                        | Tab::Settings => Tab::Tasks,
+                        Tab::Account => Tab::Settings,
+                        Tab::Download => Tab::Account,
+                        Tab::Tasks => Tab::Download,
+                        Tab::Settings => Tab::Tasks,
                 }
         }
 
         #[allow(dead_code)]
         pub fn from_index(index: usize) -> Self {
                 match index {
-                        | 0 => Tab::Account,
-                        | 1 => Tab::Download,
-                        | 2 => Tab::Tasks,
-                        | 3 => Tab::Settings,
-                        | _ => Tab::Account,
+                        0 => Tab::Account,
+                        1 => Tab::Download,
+                        2 => Tab::Tasks,
+                        3 => Tab::Settings,
+                        _ => Tab::Account,
                 }
         }
 
         #[allow(dead_code)]
         pub fn to_index(self) -> usize {
                 match self {
-                        | Tab::Account => 0,
-                        | Tab::Download => 1,
-                        | Tab::Tasks => 2,
-                        | Tab::Settings => 3,
+                        Tab::Account => 0,
+                        Tab::Download => 1,
+                        Tab::Tasks => 2,
+                        Tab::Settings => 3,
                 }
         }
 }
@@ -78,27 +78,27 @@ pub enum DownloadFocus {
 impl DownloadFocus {
         pub fn next(self) -> Self {
                 match self {
-                        | DownloadFocus::UrlInput => DownloadFocus::ModeSelect,
-                        | DownloadFocus::ModeSelect => DownloadFocus::VideoQuality,
-                        | DownloadFocus::VideoQuality => DownloadFocus::AudioQuality,
-                        | DownloadFocus::AudioQuality => DownloadFocus::VideoEncode,
-                        | DownloadFocus::VideoEncode => DownloadFocus::BatchToggle,
-                        | DownloadFocus::BatchToggle => DownloadFocus::OutputDir,
-                        | DownloadFocus::OutputDir => DownloadFocus::FfmpegPath,
-                        | DownloadFocus::FfmpegPath => DownloadFocus::UrlInput,
+                        DownloadFocus::UrlInput => DownloadFocus::ModeSelect,
+                        DownloadFocus::ModeSelect => DownloadFocus::VideoQuality,
+                        DownloadFocus::VideoQuality => DownloadFocus::AudioQuality,
+                        DownloadFocus::AudioQuality => DownloadFocus::VideoEncode,
+                        DownloadFocus::VideoEncode => DownloadFocus::BatchToggle,
+                        DownloadFocus::BatchToggle => DownloadFocus::OutputDir,
+                        DownloadFocus::OutputDir => DownloadFocus::FfmpegPath,
+                        DownloadFocus::FfmpegPath => DownloadFocus::UrlInput,
                 }
         }
 
         pub fn prev(self) -> Self {
                 match self {
-                        | DownloadFocus::UrlInput => DownloadFocus::FfmpegPath,
-                        | DownloadFocus::ModeSelect => DownloadFocus::UrlInput,
-                        | DownloadFocus::VideoQuality => DownloadFocus::ModeSelect,
-                        | DownloadFocus::AudioQuality => DownloadFocus::VideoQuality,
-                        | DownloadFocus::VideoEncode => DownloadFocus::AudioQuality,
-                        | DownloadFocus::BatchToggle => DownloadFocus::VideoEncode,
-                        | DownloadFocus::OutputDir => DownloadFocus::BatchToggle,
-                        | DownloadFocus::FfmpegPath => DownloadFocus::OutputDir,
+                        DownloadFocus::UrlInput => DownloadFocus::FfmpegPath,
+                        DownloadFocus::ModeSelect => DownloadFocus::UrlInput,
+                        DownloadFocus::VideoQuality => DownloadFocus::ModeSelect,
+                        DownloadFocus::AudioQuality => DownloadFocus::VideoQuality,
+                        DownloadFocus::VideoEncode => DownloadFocus::AudioQuality,
+                        DownloadFocus::BatchToggle => DownloadFocus::VideoEncode,
+                        DownloadFocus::OutputDir => DownloadFocus::BatchToggle,
+                        DownloadFocus::FfmpegPath => DownloadFocus::OutputDir,
                 }
         }
 }
@@ -114,17 +114,17 @@ pub enum SettingsFocus {
 impl SettingsFocus {
         pub fn next(self) -> Self {
                 match self {
-                        | SettingsFocus::Concurrencies => SettingsFocus::OutputDir,
-                        | SettingsFocus::OutputDir => SettingsFocus::FfmpegPath,
-                        | SettingsFocus::FfmpegPath => SettingsFocus::Concurrencies,
+                        SettingsFocus::Concurrencies => SettingsFocus::OutputDir,
+                        SettingsFocus::OutputDir => SettingsFocus::FfmpegPath,
+                        SettingsFocus::FfmpegPath => SettingsFocus::Concurrencies,
                 }
         }
 
         pub fn prev(self) -> Self {
                 match self {
-                        | SettingsFocus::Concurrencies => SettingsFocus::FfmpegPath,
-                        | SettingsFocus::OutputDir => SettingsFocus::Concurrencies,
-                        | SettingsFocus::FfmpegPath => SettingsFocus::OutputDir,
+                        SettingsFocus::Concurrencies => SettingsFocus::FfmpegPath,
+                        SettingsFocus::OutputDir => SettingsFocus::Concurrencies,
+                        SettingsFocus::FfmpegPath => SettingsFocus::OutputDir,
                 }
         }
 }

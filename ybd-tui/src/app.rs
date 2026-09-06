@@ -64,6 +64,10 @@ impl App {
                         concurrencies: 4,
                         output_dir: None,
                         ffmpeg_path: None,
+                        download_mode: None,
+                        video_quality_idx: None,
+                        audio_quality_idx: None,
+                        video_encode_idx: None,
                 });
 
                 let account = load_user_from_file(APP_PATH.cache_auth_path()).ok();
@@ -78,6 +82,24 @@ impl App {
                 let settings_output_input = output_dir_input.clone();
                 let settings_ffmpeg_input = ffmpeg_path_input.clone();
 
+                let download_mode = match config.download_mode.unwrap_or(0) {
+                        1 => DownloadMode::Audio,
+                        2 => DownloadMode::Cover,
+                        _ => DownloadMode::Video,
+                };
+                let video_quality_idx = config
+                        .video_quality_idx
+                        .unwrap_or(2)
+                        .min(VIDEO_QUALITIES.len() - 1);
+                let audio_quality_idx = config
+                        .audio_quality_idx
+                        .unwrap_or(0)
+                        .min(AUDIO_QUALITIES.len() - 1);
+                let video_encode_idx = config
+                        .video_encode_idx
+                        .unwrap_or(0)
+                        .min(VIDEO_ENCODES.len() - 1);
+
                 let app = Self {
                         tab: Tab::Account,
                         mode: VimMode::Normal,
@@ -90,10 +112,10 @@ impl App {
                         url_input: String::new(),
                         cursor_pos: 0,
                         download_focus: DownloadFocus::UrlInput,
-                        download_mode: DownloadMode::Video,
-                        video_quality_idx: 2, // 默认 1080P60
-                        audio_quality_idx: 0, // 默认 Hi-Res
-                        video_encode_idx: 0,  // 默认 AVC
+                        download_mode,
+                        video_quality_idx,
+                        audio_quality_idx,
+                        video_encode_idx,
                         batch: false,
                         output_dir_input,
                         ffmpeg_path_input,
@@ -128,13 +150,13 @@ impl App {
                 event: AppEvent,
         ) {
                 match event {
-                        | AppEvent::UserProfileLoaded(profile) => {
+                        AppEvent::UserProfileLoaded(profile) => {
                                 self.user_profile = Some(profile);
                         },
-                        | AppEvent::QrStatusUpdate(status) => {
+                        AppEvent::QrStatusUpdate(status) => {
                                 self.qr_status = status;
                         },
-                        | AppEvent::LoginSuccess(acc) => {
+                        AppEvent::LoginSuccess(acc) => {
                                 let _ = save_user_info(&acc, APP_PATH.cache_auth_path());
                                 self.account = Some(acc);
                                 self.qr_status = QrLoginStatus::Success;
@@ -148,10 +170,10 @@ impl App {
                                         });
                                 }
                         },
-                        | AppEvent::VideoInfoParsed(res) => {
+                        AppEvent::VideoInfoParsed(res) => {
                                 self.is_parsing = false;
                                 match res {
-                                        | Ok(info) => {
+                                        Ok(info) => {
                                                 if info.is_collection {
                                                         self.batch = true;
                                                 }
@@ -162,13 +184,13 @@ impl App {
                                                 self.preview_info = Some(info);
                                                 self.parse_error = None;
                                         },
-                                        | Err(err) => {
+                                        Err(err) => {
                                                 self.parse_error = Some(err.clone());
                                                 self.set_status(format!("解析失败: {}", err));
                                         },
                                 }
                         },
-                        | AppEvent::TaskCreated {
+                        AppEvent::TaskCreated {
                                 task_id,
                                 bvid,
                                 title,
@@ -186,7 +208,7 @@ impl App {
                                         audio_total: None,
                                 });
                         },
-                        | AppEvent::TaskVideoProgress {
+                        AppEvent::TaskVideoProgress {
                                 task_id,
                                 downloaded,
                                 total,
@@ -196,7 +218,7 @@ impl App {
                                         t.video_total = total;
                                 }
                         },
-                        | AppEvent::TaskAudioProgress {
+                        AppEvent::TaskAudioProgress {
                                 task_id,
                                 downloaded,
                                 total,
@@ -206,12 +228,12 @@ impl App {
                                         t.audio_total = total;
                                 }
                         },
-                        | AppEvent::TaskMerging { task_id } => {
+                        AppEvent::TaskMerging { task_id } => {
                                 if let Some(t) = self.tasks.iter_mut().find(|t| t.id == task_id) {
                                         t.status = TaskStatus::Merging;
                                 }
                         },
-                        | AppEvent::TaskCompleted { task_id } => {
+                        AppEvent::TaskCompleted { task_id } => {
                                 let mut title = String::new();
                                 if let Some(t) = self.tasks.iter_mut().find(|t| t.id == task_id) {
                                         t.status = TaskStatus::Completed;
@@ -221,7 +243,7 @@ impl App {
                                         self.set_status(format!("任务 [{}] 下载完成", title));
                                 }
                         },
-                        | AppEvent::TaskFailed { task_id, error } => {
+                        AppEvent::TaskFailed { task_id, error } => {
                                 let mut title = String::new();
                                 if let Some(t) = self.tasks.iter_mut().find(|t| t.id == task_id) {
                                         t.status = TaskStatus::Failed(error.clone());
@@ -234,10 +256,10 @@ impl App {
                                         ));
                                 }
                         },
-                        | AppEvent::Notify(msg) => {
+                        AppEvent::Notify(msg) => {
                                 self.set_status(msg);
                         },
-                        | _ => {},
+                        _ => {},
                 }
         }
 
@@ -246,6 +268,18 @@ impl App {
                 msg: S,
         ) {
                 self.status_msg = Some(msg.into());
+        }
+
+        pub fn persist_download_options(&mut self) {
+                self.config.download_mode = Some(match self.download_mode {
+                        DownloadMode::Video => 0,
+                        DownloadMode::Audio => 1,
+                        DownloadMode::Cover => 2,
+                });
+                self.config.video_quality_idx = Some(self.video_quality_idx);
+                self.config.audio_quality_idx = Some(self.audio_quality_idx);
+                self.config.video_encode_idx = Some(self.video_encode_idx);
+                let _ = self.config.save(APP_PATH.config_path());
         }
 
         pub fn start_qr_login(&mut self) {
@@ -285,6 +319,8 @@ impl App {
                         self.set_status("请先输入需要下载的链接或 BV 号");
                         return;
                 }
+
+                self.persist_download_options();
 
                 self.task_counter += 1;
                 let task_id = self.task_counter;
@@ -344,9 +380,19 @@ impl App {
                         Some(self.settings_ffmpeg_input.clone())
                 };
 
+                // 同时持久化当前选中的下载偏好选项
+                self.config.download_mode = Some(match self.download_mode {
+                        DownloadMode::Video => 0,
+                        DownloadMode::Audio => 1,
+                        DownloadMode::Cover => 2,
+                });
+                self.config.video_quality_idx = Some(self.video_quality_idx);
+                self.config.audio_quality_idx = Some(self.audio_quality_idx);
+                self.config.video_encode_idx = Some(self.video_encode_idx);
+
                 let _ = self.config.save(APP_PATH.config_path());
                 self.output_dir_input = self.settings_output_input.clone();
                 self.ffmpeg_path_input = self.settings_ffmpeg_input.clone();
-                self.set_status("偏好设置已保存");
+                self.set_status("配置已保存 (:w)");
         }
 }

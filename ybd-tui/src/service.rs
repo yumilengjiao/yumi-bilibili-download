@@ -55,9 +55,9 @@ pub async fn fetch_user_profile(
                                                 user_data["isLogin"].as_bool().unwrap_or(true);
                                         let vip_type =
                                                 match user_data["vipType"].as_i64().unwrap_or(0) {
-                                                        | 2 => "年度大会员".to_string(),
-                                                        | 1 => "月度大会员".to_string(),
-                                                        | _ => "普通用户".to_string(),
+                                                        2 => "年度大会员".to_string(),
+                                                        1 => "月度大会员".to_string(),
+                                                        _ => "普通用户".to_string(),
                                                 };
                                         let vip_status_desc = user_data["vip_label"]["text"]
                                                 .as_str()
@@ -92,8 +92,8 @@ pub async fn fetch_user_profile(
 
 pub async fn start_qr_login_flow(tx: UnboundedSender<AppEvent>) {
         let client = match Client::builder().user_agent(UA).build() {
-                | Ok(c) => c,
-                | Err(e) => {
+                Ok(c) => c,
+                Err(e) => {
                         let _ = tx.send(AppEvent::QrStatusUpdate(QrLoginStatus::Error(format!(
                                 "创建网络客户端失败: {}",
                                 e
@@ -106,8 +106,8 @@ pub async fn start_qr_login_flow(tx: UnboundedSender<AppEvent>) {
 
         let resp_result = client.get(LOGIN).send().await;
         let resp_json: Option<Value> = match resp_result {
-                | Ok(res) => res.json().await.ok(),
-                | Err(e) => {
+                Ok(res) => res.json().await.ok(),
+                Err(e) => {
                         let _ = tx.send(AppEvent::QrStatusUpdate(QrLoginStatus::Error(format!(
                                 "请求二维码接口失败: {}",
                                 e
@@ -117,7 +117,7 @@ pub async fn start_qr_login_flow(tx: UnboundedSender<AppEvent>) {
         };
 
         let (url, qrcode_key) = match resp_json {
-                | Some(resp) => {
+                Some(resp) => {
                         let url = resp["data"]["url"].as_str().map(|s| s.to_string());
                         let key = resp["data"]["qrcode_key"].as_str().map(|s| s.to_string());
                         if let (Some(u), Some(k)) = (url, key) {
@@ -129,7 +129,7 @@ pub async fn start_qr_login_flow(tx: UnboundedSender<AppEvent>) {
                                 return;
                         }
                 },
-                | None => {
+                None => {
                         let _ = tx.send(AppEvent::QrStatusUpdate(QrLoginStatus::Error(
                                 "解析二维码JSON失败".into(),
                         )));
@@ -138,8 +138,8 @@ pub async fn start_qr_login_flow(tx: UnboundedSender<AppEvent>) {
         };
 
         let code = match QrCode::new(url.as_bytes()) {
-                | Ok(c) => c,
-                | Err(e) => {
+                Ok(c) => c,
+                Err(e) => {
                         let _ = tx.send(AppEvent::QrStatusUpdate(QrLoginStatus::Error(format!(
                                 "生成二维码矩阵失败: {}",
                                 e
@@ -162,8 +162,8 @@ pub async fn start_qr_login_flow(tx: UnboundedSender<AppEvent>) {
                         .send()
                         .await
                 {
-                        | Ok(r) => r,
-                        | Err(_) => continue,
+                        Ok(r) => r,
+                        Err(_) => continue,
                 };
 
                 let cookies: Vec<String> = resp
@@ -174,20 +174,20 @@ pub async fn start_qr_login_flow(tx: UnboundedSender<AppEvent>) {
                         .collect();
 
                 let resp_value: Value = match resp.json().await {
-                        | Ok(v) => v,
-                        | Err(_) => continue,
+                        Ok(v) => v,
+                        Err(_) => continue,
                 };
 
                 match resp_value["data"]["code"].as_i64().unwrap_or(-1) {
-                        | 0 => {
+                        0 => {
                                 let user_id = match cookies
                                         .iter()
                                         .find(|c| c.starts_with("DedeUserID="))
                                         .and_then(|c| c.split(';').next())
                                         .and_then(|c| c.split('=').nth(1))
                                 {
-                                        | Some(id) => id.to_string(),
-                                        | None => {
+                                        Some(id) => id.to_string(),
+                                        None => {
                                                 let _ = tx.send(AppEvent::QrStatusUpdate(
                                                         QrLoginStatus::Error(
                                                                 "未找到 DedeUserID".into(),
@@ -199,8 +199,8 @@ pub async fn start_qr_login_flow(tx: UnboundedSender<AppEvent>) {
 
                                 let sessdata_cookie =
                                         match cookies.iter().find(|c| c.starts_with("SESSDATA=")) {
-                                                | Some(c) => c,
-                                                | None => {
+                                                Some(c) => c,
+                                                None => {
                                                         let _ = tx.send(AppEvent::QrStatusUpdate(
                                                                 QrLoginStatus::Error(
                                                                         "未找到 SESSDATA".into(),
@@ -215,8 +215,8 @@ pub async fn start_qr_login_flow(tx: UnboundedSender<AppEvent>) {
                                         .next()
                                         .and_then(|s| s.split('=').nth(1))
                                 {
-                                        | Some(sd) => sd.to_string(),
-                                        | None => {
+                                        Some(sd) => sd.to_string(),
+                                        None => {
                                                 let _ = tx.send(AppEvent::QrStatusUpdate(
                                                         QrLoginStatus::Error(
                                                                 "SESSDATA 格式异常".into(),
@@ -238,17 +238,17 @@ pub async fn start_qr_login_flow(tx: UnboundedSender<AppEvent>) {
                                 let _ = tx.send(AppEvent::LoginSuccess(account));
                                 return;
                         },
-                        | 86101 => {},
-                        | 86090 => {
+                        86101 => {},
+                        86090 => {
                                 let _ = tx.send(AppEvent::QrStatusUpdate(
                                         QrLoginStatus::ScannedWaitingConfirm,
                                 ));
                         },
-                        | 86038 => {
+                        86038 => {
                                 let _ = tx.send(AppEvent::QrStatusUpdate(QrLoginStatus::Expired));
                                 return;
                         },
-                        | _ => {},
+                        _ => {},
                 }
         }
 }
@@ -259,15 +259,15 @@ pub async fn parse_video_url(
         tx: UnboundedSender<AppEvent>,
 ) {
         let bili_client = match account {
-                | Some(ref acc) => BiliClient::new(acc).ok(),
-                | None => None,
+                Some(ref acc) => BiliClient::new(acc).ok(),
+                None => None,
         };
 
         // 首先尝试是否是媒体合集/收藏夹链接 (含有 ml...)
         if let Ok(ml_id) = util::extract_media_id(&url) {
                 match get_basic_collection_info(&ml_id, 1, 20, bili_client.as_ref()).await {
-                        | Ok(cur) => match cur.get_data() {
-                                | Ok(data) => {
+                        Ok(cur) => match cur.get_data() {
+                                Ok(data) => {
                                         let title = format!("【收藏夹/合集】{}", data.info.title);
                                         let owner = data.info.upper.name.clone();
                                         let count = data.info.media_count;
@@ -288,7 +288,7 @@ pub async fn parse_video_url(
                                         )));
                                         return;
                                 },
-                                | Err(e) => {
+                                Err(e) => {
                                         let _ = tx.send(AppEvent::VideoInfoParsed(Err(format!(
                                                 "解析收藏夹数据失败: {}",
                                                 e
@@ -296,7 +296,7 @@ pub async fn parse_video_url(
                                         return;
                                 },
                         },
-                        | Err(e) => {
+                        Err(e) => {
                                 let _ = tx.send(AppEvent::VideoInfoParsed(Err(format!(
                                         "请求收藏夹/合集信息失败: {}",
                                         e
@@ -308,8 +308,8 @@ pub async fn parse_video_url(
 
         // 否则按普通单视频 BV 解析
         let bvid = match util::extract_bv_id(&url) {
-                | Ok(id) => id,
-                | Err(e) => {
+                Ok(id) => id,
+                Err(e) => {
                         let _ = tx.send(AppEvent::VideoInfoParsed(Err(format!(
                                 "提取 BV 号 / 合集 ID 失败: {}",
                                 e
@@ -319,8 +319,8 @@ pub async fn parse_video_url(
         };
 
         let client = match Client::builder().user_agent(UA).build() {
-                | Ok(c) => c,
-                | Err(e) => {
+                Ok(c) => c,
+                Err(e) => {
                         let _ = tx.send(AppEvent::VideoInfoParsed(Err(format!(
                                 "网络客户端初始化失败: {}",
                                 e
@@ -342,7 +342,7 @@ pub async fn parse_video_url(
                 .await;
 
         match resp_result {
-                | Ok(resp) => {
+                Ok(resp) => {
                         if let Ok(json) = resp.json::<Value>().await {
                                 if json["code"].as_i64().unwrap_or(-1) == 0 {
                                         let data = &json["data"];
@@ -389,7 +389,7 @@ pub async fn parse_video_url(
                                 )));
                         }
                 },
-                | Err(e) => {
+                Err(e) => {
                         let _ = tx.send(AppEvent::VideoInfoParsed(Err(format!(
                                 "请求视频信息失败: {}",
                                 e
@@ -421,7 +421,7 @@ pub async fn execute_download(
         }
 
         let acc = match account {
-                | Some(a) => {
+                Some(a) => {
                         if a.is_expired() {
                                 let _ = tx.send(AppEvent::TaskFailed {
                                         task_id,
@@ -431,7 +431,7 @@ pub async fn execute_download(
                         }
                         a
                 },
-                | None => {
+                None => {
                         let _ = tx.send(AppEvent::TaskFailed {
                                 task_id,
                                 error: "未登录账号！请先按 1 进入个人中心按 r 扫码登录后再下载"
@@ -442,8 +442,8 @@ pub async fn execute_download(
         };
 
         let bili_client = match BiliClient::new(&acc) {
-                | Ok(bc) => bc,
-                | Err(e) => {
+                Ok(bc) => bc,
+                Err(e) => {
                         let _ = tx.send(AppEvent::TaskFailed {
                                 task_id,
                                 error: format!("客户端初始化失败: {}", e),
@@ -455,8 +455,8 @@ pub async fn execute_download(
         // 处理批量/合集/收藏夹下载逻辑
         if batch || util::extract_media_id(&url).is_ok() {
                 let ml_id = match util::extract_media_id(&url) {
-                        | Ok(id) => id,
-                        | Err(_) => "".to_string(),
+                        Ok(id) => id,
+                        Err(_) => "".to_string(),
                 };
 
                 if !ml_id.is_empty() {
@@ -471,8 +471,8 @@ pub async fn execute_download(
                                 )
                                 .await
                                 {
-                                        | Ok(r) => r,
-                                        | Err(e) => {
+                                        Ok(r) => r,
+                                        Err(e) => {
                                                 let _ = tx.send(AppEvent::TaskFailed {
                                                         task_id,
                                                         error: format!(
@@ -485,8 +485,8 @@ pub async fn execute_download(
                                 };
 
                                 let data = match resp.get_data() {
-                                        | Ok(d) => d,
-                                        | Err(e) => {
+                                        Ok(d) => d,
+                                        Err(e) => {
                                                 let _ = tx.send(AppEvent::TaskFailed {
                                                         task_id,
                                                         error: format!("解析合集数据失败: {}", e),
@@ -516,8 +516,8 @@ pub async fn execute_download(
                         let base_path = Arc::new(output_dir);
                         let ffmpeg = Arc::new(ffmpeg_path);
                         let sem_limit = match mode {
-                                | DownloadMode::Video => (concurrencies / 2).max(1),
-                                | _ => concurrencies.max(1),
+                                DownloadMode::Video => (concurrencies / 2).max(1),
+                                _ => concurrencies.max(1),
                         };
                         let semaphore = Arc::new(Semaphore::new(sem_limit));
                         let mut handlers = Vec::new();
@@ -532,8 +532,8 @@ pub async fn execute_download(
 
                                 let jh = tokio::spawn(async move {
                                         let _permit = match sp.acquire().await {
-                                                | Ok(p) => p,
-                                                | Err(_) => return,
+                                                Ok(p) => p,
+                                                Err(_) => return,
                                         };
 
                                         let (title, pic, _) = match actuator::get_basic_video_info(
@@ -542,8 +542,8 @@ pub async fn execute_download(
                                         )
                                         .await
                                         {
-                                                | Ok(info) => info,
-                                                | Err(e) => {
+                                                Ok(info) => info,
+                                                Err(e) => {
                                                         let _ = tx_inner.send(AppEvent::TaskFailed {
                                                                 task_id: sub_id,
                                                                 error: format!(
@@ -567,13 +567,13 @@ pub async fn execute_download(
                                         let tx_a = tx_inner.clone();
 
                                         match mode {
-                                                | DownloadMode::Cover => {
+                                                DownloadMode::Cover => {
                                                         let client = match Client::builder()
                                                                 .user_agent(UA)
                                                                 .build()
                                                         {
-                                                                | Ok(c) => c,
-                                                                | Err(_) => return,
+                                                                Ok(c) => c,
+                                                                Err(_) => return,
                                                         };
                                                         let cover_path = base_path
                                                                 .join(format!("{}.png", sanitized));
@@ -591,7 +591,7 @@ pub async fn execute_download(
                                                                 },
                                                         );
                                                 },
-                                                | DownloadMode::Audio => {
+                                                DownloadMode::Audio => {
                                                         let audio_path = base_path
                                                                 .join(format!("{}.m4a", sanitized));
                                                         if audio_path.exists() {
@@ -641,7 +641,7 @@ pub async fn execute_download(
                                                                 }
                                                         }
                                                 },
-                                                | DownloadMode::Video => {
+                                                DownloadMode::Video => {
                                                         let video_path = base_path
                                                                 .join(format!("{}.mp4", sanitized));
                                                         let v_tmp = video_path
@@ -712,8 +712,8 @@ pub async fn execute_download(
 
         // 单视频下载逻辑
         let bv_id = match util::extract_bv_id(&url) {
-                | Ok(id) => id,
-                | Err(e) => {
+                Ok(id) => id,
+                Err(e) => {
                         let _ = tx.send(AppEvent::TaskFailed {
                                 task_id,
                                 error: format!("提取BV号失败: {}", e),
@@ -724,8 +724,8 @@ pub async fn execute_download(
 
         let (title, pic, _) = match actuator::get_basic_video_info(&bv_id, Some(&bili_client)).await
         {
-                | Ok(info) => info,
-                | Err(e) => {
+                Ok(info) => info,
+                Err(e) => {
                         let _ = tx.send(AppEvent::TaskFailed {
                                 task_id,
                                 error: format!("获取视频基础信息失败: {}", e),
@@ -745,10 +745,16 @@ pub async fn execute_download(
         });
 
         match mode {
-                | DownloadMode::Cover => {
+                DownloadMode::Cover => {
+                        let cover_path = output_dir.join(format!("{}.png", sanitized_title));
+                        if cover_path.exists() {
+                                let _ = tx.send(AppEvent::TaskCompleted { task_id });
+                                return;
+                        }
+
                         let client = match Client::builder().user_agent(UA).build() {
-                                | Ok(c) => c,
-                                | Err(e) => {
+                                Ok(c) => c,
+                                Err(e) => {
                                         let _ = tx.send(AppEvent::TaskFailed {
                                                 task_id,
                                                 error: format!("网络客户端异常: {}", e),
@@ -756,12 +762,11 @@ pub async fn execute_download(
                                         return;
                                 },
                         };
-                        let cover_path = output_dir.join(format!("{}.png", sanitized_title));
                         match actuator::download_cover(&client, &pic, &cover_path).await {
-                                | Ok(_) => {
+                                Ok(_) => {
                                         let _ = tx.send(AppEvent::TaskCompleted { task_id });
                                 },
-                                | Err(e) => {
+                                Err(e) => {
                                         let _ = tx.send(AppEvent::TaskFailed {
                                                 task_id,
                                                 error: format!("下载封面失败: {}", e),
@@ -769,11 +774,26 @@ pub async fn execute_download(
                                 },
                         }
                 },
-                | DownloadMode::Audio => {
+                DownloadMode::Audio => {
                         let audio_path = output_dir.join(format!("{}.m4a", sanitized_title));
+                        if audio_path.exists() {
+                                if !util::check_cover_box(&audio_path).unwrap_or(true) {
+                                        if let Ok(cover_bytes) =
+                                                util::download_cover_bytes(&bili_client, &pic).await
+                                        {
+                                                let _ = util::add_cover_box(
+                                                        &audio_path,
+                                                        cover_bytes,
+                                                );
+                                        }
+                                }
+                                let _ = tx.send(AppEvent::TaskCompleted { task_id });
+                                return;
+                        }
+
                         let pur = match PlayUrlResponse::new(&bili_client, &bv_id).await {
-                                | Ok(p) => p,
-                                | Err(e) => {
+                                Ok(p) => p,
+                                Err(e) => {
                                         let _ = tx.send(AppEvent::TaskFailed {
                                                 task_id,
                                                 error: format!(
@@ -799,7 +819,7 @@ pub async fn execute_download(
 
                         let option = builder.build();
                         match actuator::download_audio(&bili_client, &pur, &option).await {
-                                | Ok(_) => {
+                                Ok(_) => {
                                         if !util::check_cover_box(&audio_path).unwrap_or(true) {
                                                 if let Ok(cover_bytes) = util::download_cover_bytes(
                                                         &bili_client,
@@ -815,7 +835,7 @@ pub async fn execute_download(
                                         }
                                         let _ = tx.send(AppEvent::TaskCompleted { task_id });
                                 },
-                                | Err(e) => {
+                                Err(e) => {
                                         let _ = tx.send(AppEvent::TaskFailed {
                                                 task_id,
                                                 error: format!("下载音频失败: {}", e),
@@ -823,14 +843,19 @@ pub async fn execute_download(
                                 },
                         }
                 },
-                | DownloadMode::Video => {
+                DownloadMode::Video => {
                         let video_path = output_dir.join(format!("{}.mp4", sanitized_title));
+                        if video_path.exists() {
+                                let _ = tx.send(AppEvent::TaskCompleted { task_id });
+                                return;
+                        }
+
                         let video_tmp = video_path.with_extension("video.tmp");
                         let audio_tmp = video_path.with_extension("audio.tmp");
 
                         let pur = match PlayUrlResponse::new(&bili_client, &bv_id).await {
-                                | Ok(p) => p,
-                                | Err(e) => {
+                                Ok(p) => p,
+                                Err(e) => {
                                         let _ = tx.send(AppEvent::TaskFailed {
                                                 task_id,
                                                 error: format!(
@@ -874,10 +899,10 @@ pub async fn execute_download(
                         let option = builder.build();
 
                         match actuator::download_video(&bili_client, &pur, &option).await {
-                                | Ok(_) => {
+                                Ok(_) => {
                                         let _ = tx.send(AppEvent::TaskCompleted { task_id });
                                 },
-                                | Err(e) => {
+                                Err(e) => {
                                         let _ = tx.send(AppEvent::TaskFailed {
                                                 task_id,
                                                 error: format!("下载视频失败: {}", e),

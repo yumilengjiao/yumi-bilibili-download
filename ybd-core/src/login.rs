@@ -78,7 +78,7 @@ async fn query_login_state(
                 let resp_value: Value = resp.json().await?;
 
                 match resp_value["data"]["code"].as_i64().unwrap_or(-1) {
-                        | 0 => {
+                        0 => {
                                 let user_id = cookies
                                         .iter()
                                         .find(|c| c.starts_with("DedeUserID="))
@@ -110,10 +110,10 @@ async fn query_login_state(
 
                                 return Ok((user_id, sessdata, expire_time));
                         },
-                        | 86101 => print!("\r等待扫码..."),
-                        | 86090 => print!("\r已扫码，请在手机上确认..."),
-                        | 86038 => return Err(Error::Normal("二维码已过期，请重新运行".into())),
-                        | code => println!("未知状态码: {}", code),
+                        86101 => print!("\r等待扫码..."),
+                        86090 => print!("\r已扫码，请在手机上确认..."),
+                        86038 => return Err(Error::Normal("二维码已过期，请重新运行".into())),
+                        code => println!("未知状态码: {}", code),
                 }
         }
 }

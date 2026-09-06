@@ -1,6 +1,6 @@
 //! 本地配置解析模块
 //!
-//! 负责从配置文件加载并发数、默认存储路径等运行时设置。
+//! 负责从配置文件加载并发数、默认存储路径、画质/音质/编码偏好等设置。
 
 use std::{fs::File, num::NonZeroUsize, path::Path, thread};
 
@@ -15,16 +15,28 @@ pub struct Config {
         pub output_dir: Option<String>,
         #[serde(default)]
         pub ffmpeg_path: Option<String>,
+        #[serde(default)]
+        pub download_mode: Option<usize>,
+        #[serde(default)]
+        pub video_quality_idx: Option<usize>,
+        #[serde(default)]
+        pub audio_quality_idx: Option<usize>,
+        #[serde(default)]
+        pub video_encode_idx: Option<usize>,
 }
 
 impl Config {
         pub fn new(config_file_path: Option<&Path>) -> Result<Self> {
                 match config_file_path {
-                        | Some(file_path) => read_from_local(file_path),
-                        | None => Ok(Config {
+                        Some(file_path) => read_from_local(file_path),
+                        None => Ok(Config {
                                 concurrencies: default_concurrencies(),
                                 output_dir: None,
                                 ffmpeg_path: None,
+                                download_mode: None,
+                                video_quality_idx: None,
+                                audio_quality_idx: None,
+                                video_encode_idx: None,
                         }),
                 }
         }
@@ -44,14 +56,18 @@ impl Config {
 
 fn read_from_local(config_path: &Path) -> Result<Config> {
         match File::open(config_path) {
-                | Ok(config_file) => {
+                Ok(config_file) => {
                         let config: Config = serde_json::from_reader(config_file)?;
                         Ok(config)
                 },
-                | Err(_) => Ok(Config {
+                Err(_) => Ok(Config {
                         concurrencies: default_concurrencies(),
                         output_dir: None,
                         ffmpeg_path: None,
+                        download_mode: None,
+                        video_quality_idx: None,
+                        audio_quality_idx: None,
+                        video_encode_idx: None,
                 }),
         }
 }

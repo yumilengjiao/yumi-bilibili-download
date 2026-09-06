@@ -155,10 +155,10 @@ pub async fn download_audio(
         }
         let video_data = pur.get_data()?;
         let url = match download_option.audio_quality {
-                | Some(aq) => video_data
+                Some(aq) => video_data
                         .get_specified_audio_url(aq)
                         .ok_or(Error::Normal("无法获取指定音质的音频资源".into()))?,
-                | None => video_data
+                None => video_data
                         .best_audio_url()
                         .ok_or(Error::Normal("没有找到音频".into()))?,
         };
@@ -313,8 +313,8 @@ async fn download_url(
                         tokio::time::sleep(tokio::time::Duration::from_secs(attempt * 2)).await;
                 }
                 match try_download_url(bili_client, url, path, on_progress).await {
-                        | Ok(()) => return Ok(()),
-                        | Err(e) => last_err = Some(e),
+                        Ok(()) => return Ok(()),
+                        Err(e) => last_err = Some(e),
                 }
         }
         Err(last_err.unwrap())

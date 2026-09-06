@@ -30,7 +30,7 @@ pub fn render_settings_view(
                                 .add_modifier(Modifier::BOLD),
                 ),
                 Span::styled(
-                        " (按 i 编辑，按 Enter / :w 保存配置)",
+                        " (按 i 编辑内容，按 :w 保存全局配置)",
                         Style::default().fg(Color::DarkGray),
                 ),
         ]));
@@ -141,7 +141,7 @@ pub fn render_settings_view(
                 Span::styled("  快捷操作: ", Style::default().fg(Color::DarkGray)),
                 Span::styled("i ", Style::default().fg(Color::Cyan)),
                 Span::styled("修改输入     ", Style::default().fg(Color::Gray)),
-                Span::styled("Enter / :w ", Style::default().fg(Color::Cyan)),
+                Span::styled(":w ", Style::default().fg(Color::Cyan)),
                 Span::styled("保存设置", Style::default().fg(Color::Gray)),
         ]));
 
@@ -150,17 +150,17 @@ pub fn render_settings_view(
         // 设置终端真实光标位置（结合横向滚动的视觉偏移）
         if app.mode == VimMode::Insert {
                 match app.settings_focus {
-                        | SettingsFocus::Concurrencies => {
+                        SettingsFocus::Concurrencies => {
                                 let x = area.x + 20 + visual_c_cursor;
                                 let y = area.y + c_display_line_idx as u16;
                                 f.set_cursor_position((x, y));
                         },
-                        | SettingsFocus::OutputDir => {
+                        SettingsFocus::OutputDir => {
                                 let x = area.x + 20 + visual_out_cursor;
                                 let y = area.y + out_display_line_idx as u16;
                                 f.set_cursor_position((x, y));
                         },
-                        | SettingsFocus::FfmpegPath => {
+                        SettingsFocus::FfmpegPath => {
                                 let x = area.x + 20 + visual_ff_cursor;
                                 let y = area.y + ff_display_line_idx as u16;
                                 f.set_cursor_position((x, y));

@@ -41,10 +41,10 @@ pub fn render_ui(
         render_header(f, app, chunks[0]);
 
         match app.tab {
-                | Tab::Account => render_account_view(f, app, chunks[1]),
-                | Tab::Download => render_download_view(f, app, chunks[1]),
-                | Tab::Tasks => render_tasks_view(f, app, chunks[1]),
-                | Tab::Settings => render_settings_view(f, app, chunks[1]),
+                Tab::Account => render_account_view(f, app, chunks[1]),
+                Tab::Download => render_download_view(f, app, chunks[1]),
+                Tab::Tasks => render_tasks_view(f, app, chunks[1]),
+                Tab::Settings => render_settings_view(f, app, chunks[1]),
         }
 
         render_status_bar(f, app, chunks[2]);

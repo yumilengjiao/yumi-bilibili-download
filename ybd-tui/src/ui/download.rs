@@ -171,9 +171,9 @@ pub fn render_download_view(
         // 模式
         let is_mode_focus = app.download_focus == DownloadFocus::ModeSelect;
         let mode_v = match app.download_mode {
-                | DownloadMode::Video => "● 视频     ○ 仅音频     ○ 仅封面",
-                | DownloadMode::Audio => "○ 视频     ● 仅音频     ○ 仅封面",
-                | DownloadMode::Cover => "○ 视频     ○ 仅音频     ● 仅封面",
+                DownloadMode::Video => "● 视频     ○ 仅音频     ○ 仅封面",
+                DownloadMode::Audio => "○ 视频     ● 仅音频     ○ 仅封面",
+                DownloadMode::Cover => "○ 视频     ○ 仅音频     ● 仅封面",
         };
         lines.push(Line::from(vec![
                 Span::styled(
@@ -203,13 +203,13 @@ pub fn render_download_view(
         // 画质
         let is_vq_focus = app.download_focus == DownloadFocus::VideoQuality;
         let vq_name = match VIDEO_QUALITIES[app.video_quality_idx] {
-                | ybd_core::model::quality::VideoQuality::K8 => "8K 超高清",
-                | ybd_core::model::quality::VideoQuality::K4 => "4K 超清",
-                | ybd_core::model::quality::VideoQuality::FHD1080P60 => "1080P 60帧 (高码率)",
-                | ybd_core::model::quality::VideoQuality::FHD1080P => "1080P 高清",
-                | ybd_core::model::quality::VideoQuality::HD720P => "720P 高清",
-                | ybd_core::model::quality::VideoQuality::SD480P => "480P 清晰",
-                | ybd_core::model::quality::VideoQuality::LD360P => "360P 流畅",
+                ybd_core::model::quality::VideoQuality::K8 => "8K 超高清",
+                ybd_core::model::quality::VideoQuality::K4 => "4K 超清",
+                ybd_core::model::quality::VideoQuality::FHD1080P60 => "1080P 60帧 (高码率)",
+                ybd_core::model::quality::VideoQuality::FHD1080P => "1080P 高清",
+                ybd_core::model::quality::VideoQuality::HD720P => "720P 高清",
+                ybd_core::model::quality::VideoQuality::SD480P => "480P 清晰",
+                ybd_core::model::quality::VideoQuality::LD360P => "360P 流畅",
         };
         lines.push(Line::from(vec![
                 Span::styled(
@@ -239,11 +239,11 @@ pub fn render_download_view(
         // 音质
         let is_aq_focus = app.download_focus == DownloadFocus::AudioQuality;
         let aq_name = match AUDIO_QUALITIES[app.audio_quality_idx] {
-                | ybd_core::model::quality::AudioQuality::HiRes => "Hi-Res 无损",
-                | ybd_core::model::quality::AudioQuality::Dolby => "杜比全景声",
-                | ybd_core::model::quality::AudioQuality::High => "192Kbps 高音质",
-                | ybd_core::model::quality::AudioQuality::Medium => "132Kbps 标准",
-                | ybd_core::model::quality::AudioQuality::Low => "64Kbps",
+                ybd_core::model::quality::AudioQuality::HiRes => "Hi-Res 无损",
+                ybd_core::model::quality::AudioQuality::Dolby => "杜比全景声",
+                ybd_core::model::quality::AudioQuality::High => "192Kbps 高音质",
+                ybd_core::model::quality::AudioQuality::Medium => "132Kbps 标准",
+                ybd_core::model::quality::AudioQuality::Low => "64Kbps",
         };
         lines.push(Line::from(vec![
                 Span::styled(
@@ -273,9 +273,9 @@ pub fn render_download_view(
         // 编码
         let is_ve_focus = app.download_focus == DownloadFocus::VideoEncode;
         let ve_name = match VIDEO_ENCODES[app.video_encode_idx] {
-                | ybd_core::model::quality::VideoEncode::AVC => "AVC / H.264 (兼容性最好)",
-                | ybd_core::model::quality::VideoEncode::HEVC => "HEVC / H.265 (高压缩比)",
-                | ybd_core::model::quality::VideoEncode::AV1 => "AV1 (极高画质)",
+                ybd_core::model::quality::VideoEncode::AVC => "AVC / H.264 (兼容性最好)",
+                ybd_core::model::quality::VideoEncode::HEVC => "HEVC / H.265 (高压缩比)",
+                ybd_core::model::quality::VideoEncode::AV1 => "AV1 (极高画质)",
         };
         lines.push(Line::from(vec![
                 Span::styled(
@@ -428,22 +428,22 @@ pub fn render_download_view(
         // 设置终端真实光标位置（结合横向滚动的视觉偏移）
         if app.mode == VimMode::Insert {
                 match app.download_focus {
-                        | DownloadFocus::UrlInput => {
+                        DownloadFocus::UrlInput => {
                                 let x = area.x + 4 + visual_url_cursor;
                                 let y = area.y + 2;
                                 f.set_cursor_position((x, y));
                         },
-                        | DownloadFocus::OutputDir => {
+                        DownloadFocus::OutputDir => {
                                 let x = area.x + 12 + visual_out_cursor;
                                 let y = area.y + out_display_line_idx as u16;
                                 f.set_cursor_position((x, y));
                         },
-                        | DownloadFocus::FfmpegPath => {
+                        DownloadFocus::FfmpegPath => {
                                 let x = area.x + 12 + visual_ff_cursor;
                                 let y = area.y + ff_display_line_idx as u16;
                                 f.set_cursor_position((x, y));
                         },
-                        | _ => {},
+                        _ => {},
                 }
         }
 }

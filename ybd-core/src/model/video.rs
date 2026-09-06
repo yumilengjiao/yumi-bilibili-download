@@ -44,13 +44,13 @@ impl PlayUrlResponse {
 
         fn valid(&self) -> Result<()> {
                 match self.code {
-                        | 0 => Ok(()),
-                        | -101 => Err(Error::Normal("账号未登录".into())),
-                        | -403 => Err(Error::Normal("权限不足，可能需要大会员".into())),
-                        | -404 => Err(Error::Normal("视频不存在".into())),
-                        | -412 => Err(Error::Normal("请求被拦截，请稍后再试".into())),
-                        | -10403 => Err(Error::Normal("地区限制，无法观看".into())),
-                        | _ => Err(Error::Normal(format!("未知错误码: {}", self.code))),
+                        0 => Ok(()),
+                        -101 => Err(Error::Normal("账号未登录".into())),
+                        -403 => Err(Error::Normal("权限不足，可能需要大会员".into())),
+                        -404 => Err(Error::Normal("视频不存在".into())),
+                        -412 => Err(Error::Normal("请求被拦截，请稍后再试".into())),
+                        -10403 => Err(Error::Normal("地区限制，无法观看".into())),
+                        _ => Err(Error::Normal(format!("未知错误码: {}", self.code))),
                 }
         }
 }
@@ -178,19 +178,19 @@ impl VideoData {
                 audio_quality: AudioQuality,
         ) -> Option<&str> {
                 let direct_match = match audio_quality {
-                        | AudioQuality::HiRes => self
+                        AudioQuality::HiRes => self
                                 .dash
                                 .flac
                                 .as_ref()
                                 .map(|flac| flac.audio.base_url.as_str()),
-                        | AudioQuality::Dolby => self
+                        AudioQuality::Dolby => self
                                 .dash
                                 .dolby
                                 .as_ref()
                                 .and_then(|db| db.audio.as_ref())
                                 .and_then(|audio_vec| audio_vec.first())
                                 .map(|a| a.base_url.as_str()),
-                        | _ => self
+                        _ => self
                                 .dash
                                 .audio
                                 .iter()

@@ -2,7 +2,7 @@
 
 [package]
 name = "ybd-tui"
-version = "0.1.0"
+version = "0.1.1"
 edition.workspace = true
 description = "Bilibili 资源下载终端用户界面工具"
 license.workspace = true

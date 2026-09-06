@@ -21,7 +21,7 @@ pub fn render_status_bar(
                 .split(area);
 
         match app.mode {
-                | VimMode::Command => {
+                VimMode::Command => {
                         let cmd_line = Line::from(vec![
                                 Span::styled(":", Style::default().fg(Color::Yellow)),
                                 Span::styled(
@@ -36,7 +36,7 @@ pub fn render_status_bar(
                         let y = chunks[0].y;
                         f.set_cursor_position((x, y));
                 },
-                | VimMode::Insert => {
+                VimMode::Insert => {
                         let msg_span = if let Some(ref msg) = app.status_msg {
                                 Span::styled(
                                         format!("  {}", msg),
@@ -50,7 +50,7 @@ pub fn render_status_bar(
                         };
                         f.render_widget(Paragraph::new(Line::from(vec![msg_span])), chunks[0]);
                 },
-                | VimMode::Normal => {
+                VimMode::Normal => {
                         let msg_span = if let Some(ref msg) = app.status_msg {
                                 Span::styled(
                                         format!("  {}", msg),
@@ -65,15 +65,15 @@ pub fn render_status_bar(
 
         // 右侧极简帮助提示
         let help_text = match app.mode {
-                | VimMode::Command => Line::from(Span::styled(
+                VimMode::Command => Line::from(Span::styled(
                         "[Enter] 执行  [Esc] 取消",
                         Style::default().fg(Color::DarkGray),
                 )),
-                | VimMode::Insert => Line::from(Span::styled(
+                VimMode::Insert => Line::from(Span::styled(
                         "[Enter] 确认  [Esc] 退出",
                         Style::default().fg(Color::DarkGray),
                 )),
-                | VimMode::Normal => Line::from(Span::styled(
+                VimMode::Normal => Line::from(Span::styled(
                         ":help 或 ? 查看帮助",
                         Style::default().fg(Color::DarkGray),
                 )),

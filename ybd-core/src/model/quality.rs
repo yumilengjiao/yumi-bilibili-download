@@ -24,9 +24,9 @@ impl VideoEncode {
         pub fn as_str(&self) -> &'static str {
                 // 过滤时通过start_with
                 match self {
-                        | Self::AVC => "avc",
-                        | Self::HEVC => "hev",
-                        | Self::AV1 => "av01",
+                        Self::AVC => "avc",
+                        Self::HEVC => "hev",
+                        Self::AV1 => "av01",
                 }
         }
 }

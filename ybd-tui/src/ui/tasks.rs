@@ -56,9 +56,9 @@ pub fn render_tasks_view(
                         let prefix = if is_selected { "  ❯ " } else { "    " };
 
                         let mode_tag = match task.mode {
-                                | DownloadMode::Video => "[视频]",
-                                | DownloadMode::Audio => "[音频]",
-                                | DownloadMode::Cover => "[封面]",
+                                DownloadMode::Video => "[视频]",
+                                DownloadMode::Audio => "[音频]",
+                                DownloadMode::Cover => "[封面]",
                         };
 
                         task_line_indices.push(lines.len());
@@ -90,7 +90,7 @@ pub fn render_tasks_view(
                         ]));
 
                         match &task.status {
-                                | TaskStatus::Downloading => {
+                                TaskStatus::Downloading => {
                                         if task.mode == DownloadMode::Video {
                                                 let (pct_v, bar_v) = make_progress_bar(
                                                         task.video_downloaded,
@@ -188,7 +188,7 @@ pub fn render_tasks_view(
                                                 ]));
                                         }
                                 },
-                                | TaskStatus::Merging => {
+                                TaskStatus::Merging => {
                                         lines.push(Line::from(vec![
                                                 Span::styled(
                                                         "      状态: ",
@@ -200,7 +200,7 @@ pub fn render_tasks_view(
                                                 ),
                                         ]));
                                 },
-                                | TaskStatus::Failed(e) => {
+                                TaskStatus::Failed(e) => {
                                         lines.push(Line::from(vec![
                                                 Span::styled(
                                                         "      错误: ",
@@ -212,7 +212,7 @@ pub fn render_tasks_view(
                                                 ),
                                         ]));
                                 },
-                                | _ => {},
+                                _ => {},
                         }
                         lines.push(Line::from(""));
                 }
