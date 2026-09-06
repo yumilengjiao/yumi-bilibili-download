@@ -28,7 +28,10 @@ pub fn render_header(
                                 .fg(Color::Cyan)
                                 .add_modifier(Modifier::BOLD),
                 ),
-                Span::styled("v0.2.2", Style::default().fg(Color::DarkGray)),
+                Span::styled(
+                        concat!("v", env!("CARGO_PKG_VERSION")),
+                        Style::default().fg(Color::DarkGray),
+                ),
         ]);
         f.render_widget(Paragraph::new(logo), chunks[0]);
 

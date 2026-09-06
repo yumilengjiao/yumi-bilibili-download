@@ -2,7 +2,7 @@
 
 [package]
 name = "ybd-cli"
-version.workspace = true
+version = "0.1.0"
 edition.workspace = true
 description = "Bilibili 资源下载命令行工具"
 license.workspace = true
