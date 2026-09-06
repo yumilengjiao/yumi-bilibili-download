@@ -300,6 +300,7 @@ impl App {
                 let audio_quality = AUDIO_QUALITIES[self.audio_quality_idx];
                 let video_encode = VIDEO_ENCODES[self.video_encode_idx];
                 let batch = self.batch;
+                let concurrencies = self.config.concurrencies;
 
                 let account = self.account.clone();
 
@@ -315,6 +316,7 @@ impl App {
                                 audio_quality,
                                 video_encode,
                                 batch,
+                                concurrencies,
                                 account,
                                 tx,
                         )

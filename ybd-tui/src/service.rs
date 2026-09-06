@@ -408,6 +408,7 @@ pub async fn execute_download(
         audio_quality: ybd_core::model::quality::AudioQuality,
         video_encode: VideoEncode,
         batch: bool,
+        concurrencies: usize,
         account: Option<Account>,
         tx: UnboundedSender<AppEvent>,
 ) {
@@ -511,11 +512,14 @@ pub async fn execute_download(
                                 return;
                         }
 
-                        let total_count = bv_ids.len();
                         let bc = Arc::new(bili_client);
                         let base_path = Arc::new(output_dir);
                         let ffmpeg = Arc::new(ffmpeg_path);
-                        let semaphore = Arc::new(Semaphore::new(2));
+                        let sem_limit = match mode {
+                                | DownloadMode::Video => (concurrencies / 2).max(1),
+                                | _ => concurrencies.max(1),
+                        };
+                        let semaphore = Arc::new(Semaphore::new(sem_limit));
                         let mut handlers = Vec::new();
 
                         for (idx, bv_id) in bv_ids.into_iter().enumerate() {
@@ -555,12 +559,7 @@ pub async fn execute_download(
                                         let _ = tx_inner.send(AppEvent::TaskCreated {
                                                 task_id: sub_id,
                                                 bvid: bv_id.clone(),
-                                                title: format!(
-                                                        "[{}/{}] {}",
-                                                        idx + 1,
-                                                        total_count,
-                                                        title
-                                                ),
+                                                title: title.clone(),
                                                 mode,
                                         });
 

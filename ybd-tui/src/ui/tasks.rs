@@ -1,4 +1,4 @@
-//! 下载任务列表页面渲染模块
+//! 下载任务列表页面渲染模块（支持纵向智能跟随滚动与屏幕视觉焦点对齐）
 
 use ratatui::{
         Frame,
@@ -18,21 +18,23 @@ pub fn render_tasks_view(
         app: &App,
         area: Rect,
 ) {
-        let mut lines = Vec::new();
+        let mut lines: Vec<Line> = Vec::new();
+        let mut task_line_indices: Vec<usize> = Vec::new();
+
         lines.push(Line::from(""));
 
         let active_tasks: Vec<_> = app
                 .tasks
                 .iter()
-                .enumerate()
-                .filter(|(_, t)| t.status != TaskStatus::Completed)
+                .filter(|t| t.status != TaskStatus::Completed)
                 .collect();
         let completed_tasks: Vec<_> = app
                 .tasks
                 .iter()
-                .enumerate()
-                .filter(|(_, t)| t.status == TaskStatus::Completed)
+                .filter(|t| t.status == TaskStatus::Completed)
                 .collect();
+
+        let mut visual_idx = 0usize;
 
         lines.push(Line::from(vec![Span::styled(
                 format!("  进行中任务 ({})", active_tasks.len()),
@@ -49,8 +51,8 @@ pub fn render_tasks_view(
                 lines.push(Line::from(""));
         } else {
                 lines.push(Line::from(""));
-                for (idx, task) in active_tasks {
-                        let is_selected = app.selected_task_idx == idx;
+                for task in &active_tasks {
+                        let is_selected = app.selected_task_idx == visual_idx;
                         let prefix = if is_selected { "  ❯ " } else { "    " };
 
                         let mode_tag = match task.mode {
@@ -58,6 +60,9 @@ pub fn render_tasks_view(
                                 | DownloadMode::Audio => "[音频]",
                                 | DownloadMode::Cover => "[封面]",
                         };
+
+                        task_line_indices.push(lines.len());
+                        visual_idx += 1;
 
                         lines.push(Line::from(vec![
                                 Span::styled(
@@ -214,8 +219,11 @@ pub fn render_tasks_view(
         }
 
         // 已完成列表
+        let completed_count = completed_tasks.len();
+        let total_task_count = app.tasks.len();
+
         lines.push(Line::from(vec![Span::styled(
-                format!("  已完成记录 ({})", completed_tasks.len()),
+                format!("  已完成记录 ({})", completed_count),
                 Style::default()
                         .fg(Color::Cyan)
                         .add_modifier(Modifier::BOLD),
@@ -228,9 +236,16 @@ pub fn render_tasks_view(
                 )]));
         } else {
                 lines.push(Line::from(""));
-                for (_, task) in completed_tasks {
+                for (completed_idx, task) in completed_tasks.into_iter().enumerate() {
+                        let progress_tag = if total_task_count > 1 {
+                                format!("[{}/{}] ", completed_idx + 1, total_task_count)
+                        } else {
+                                format!("[{}] ", completed_idx + 1)
+                        };
+
                         lines.push(Line::from(vec![
                                 Span::styled("    ✓ ", Style::default().fg(Color::Green)),
+                                Span::styled(progress_tag, Style::default().fg(Color::LightGreen)),
                                 Span::styled(&task.title, Style::default().fg(Color::Gray)),
                                 Span::styled("  [已完成]", Style::default().fg(Color::DarkGray)),
                         ]));
@@ -241,14 +256,40 @@ pub fn render_tasks_view(
         lines.push(Line::from(vec![
                 Span::styled("  快捷操作: ", Style::default().fg(Color::DarkGray)),
                 Span::styled("j / k ", Style::default().fg(Color::Cyan)),
-                Span::styled("上下选择     ", Style::default().fg(Color::Gray)),
+                Span::styled("上下移动选择     ", Style::default().fg(Color::Gray)),
                 Span::styled("d ", Style::default().fg(Color::Cyan)),
                 Span::styled("移除任务     ", Style::default().fg(Color::Gray)),
                 Span::styled("c ", Style::default().fg(Color::Cyan)),
                 Span::styled("清空已完成", Style::default().fg(Color::Gray)),
         ]));
 
-        f.render_widget(Paragraph::new(lines), area);
+        // 动态计算可视滚动窗口（保持当前选中项在视图内）
+        let view_height = area.height as usize;
+        let total_lines = lines.len();
+
+        let target_line = if app.selected_task_idx < task_line_indices.len() {
+                task_line_indices[app.selected_task_idx]
+        } else {
+                0
+        };
+
+        let scroll_offset = if total_lines <= view_height {
+                0
+        } else if target_line + 4 >= view_height {
+                (target_line + 4)
+                        .saturating_sub(view_height)
+                        .min(total_lines.saturating_sub(view_height))
+        } else {
+                0
+        };
+
+        let visible_lines: Vec<Line> = lines
+                .into_iter()
+                .skip(scroll_offset)
+                .take(view_height)
+                .collect();
+
+        f.render_widget(Paragraph::new(visible_lines), area);
 }
 
 fn make_progress_bar(

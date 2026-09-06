@@ -95,9 +95,12 @@ fn handle_normal_mode(
                                 app.download_focus = app.download_focus.next();
                         },
                         | Tab::Tasks => {
-                                if !app.tasks.is_empty()
-                                        && app.selected_task_idx + 1 < app.tasks.len()
-                                {
+                                let active_count = app
+                                        .tasks
+                                        .iter()
+                                        .filter(|t| t.status != TaskStatus::Completed)
+                                        .count();
+                                if active_count > 0 && app.selected_task_idx + 1 < active_count {
                                         app.selected_task_idx += 1;
                                 }
                         },
@@ -223,15 +226,34 @@ fn handle_normal_mode(
                 },
                 | KeyCode::Char('d') => match app.tab {
                         | Tab::Tasks => {
-                                if !app.tasks.is_empty() && app.selected_task_idx < app.tasks.len()
-                                {
-                                        let removed = app.tasks.remove(app.selected_task_idx);
-                                        if app.selected_task_idx >= app.tasks.len()
-                                                && app.selected_task_idx > 0
+                                let target_id = app
+                                        .tasks
+                                        .iter()
+                                        .filter(|t| t.status != TaskStatus::Completed)
+                                        .nth(app.selected_task_idx)
+                                        .map(|t| t.id);
+
+                                if let Some(id) = target_id {
+                                        if let Some(pos) = app.tasks.iter().position(|t| t.id == id)
                                         {
-                                                app.selected_task_idx -= 1;
+                                                let removed = app.tasks.remove(pos);
+                                                let active_count = app
+                                                        .tasks
+                                                        .iter()
+                                                        .filter(|t| {
+                                                                t.status != TaskStatus::Completed
+                                                        })
+                                                        .count();
+                                                if app.selected_task_idx >= active_count
+                                                        && app.selected_task_idx > 0
+                                                {
+                                                        app.selected_task_idx -= 1;
+                                                }
+                                                app.set_status(format!(
+                                                        "已移除任务: {}",
+                                                        removed.title
+                                                ));
                                         }
-                                        app.set_status(format!("已移除任务: {}", removed.title));
                                 }
                         },
                         | _ => {},
