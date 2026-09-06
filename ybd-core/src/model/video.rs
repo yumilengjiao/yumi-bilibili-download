@@ -114,15 +114,52 @@ impl VideoData {
                 video_encode: Option<VideoEncode>,
         ) -> Option<&str> {
                 if video_quality.is_none() && video_encode.is_none() {
-                        return None;
+                        return self.best_video_quality_url();
                 }
-                self.dash
+
+                // 1. 尝试完全匹配指定画质 + 指定编码
+                if let Some(url) = self
+                        .dash
                         .video
                         .iter()
                         .filter(|v| self.accept_quality.contains(&v.id))
                         .filter(|v| video_quality.is_none_or(|vq| v.id == vq as i64))
                         .find(|v| video_encode.is_none_or(|ve| v.codecs.starts_with(ve.as_str())))
                         .map(|v| v.base_url.as_str())
+                {
+                        return Some(url);
+                }
+
+                // 2. 容错降级：如果找不到指定编码，尝试匹配指定画质的任意可用编码
+                if let Some(vq) = video_quality {
+                        if let Some(url) = self
+                                .dash
+                                .video
+                                .iter()
+                                .filter(|v| self.accept_quality.contains(&v.id))
+                                .filter(|v| v.id == vq as i64)
+                                .map(|v| v.base_url.as_str())
+                                .next()
+                        {
+                                return Some(url);
+                        }
+
+                        // 3. 容错降级：如果视频分辨率低于指定画质，寻找小于等于指定画质的最高画质
+                        if let Some(url) = self
+                                .dash
+                                .video
+                                .iter()
+                                .filter(|v| self.accept_quality.contains(&v.id))
+                                .filter(|v| v.id <= vq as i64)
+                                .max_by_key(|v| v.id)
+                                .map(|v| v.base_url.as_str())
+                        {
+                                return Some(url);
+                        }
+                }
+
+                // 4. 最终容错兜底：自动选取当前可用的最高画质视频流
+                self.best_video_quality_url()
         }
 
         pub fn best_audio_url(&self) -> Option<&str> {
@@ -140,7 +177,7 @@ impl VideoData {
                 &self,
                 audio_quality: AudioQuality,
         ) -> Option<&str> {
-                match audio_quality {
+                let direct_match = match audio_quality {
                         | AudioQuality::HiRes => self
                                 .dash
                                 .flac
@@ -159,7 +196,10 @@ impl VideoData {
                                 .iter()
                                 .find(|a| a.id == audio_quality as i64)
                                 .map(|a| a.base_url.as_str()),
-                }
+                };
+
+                // 容错降级：如果指定音质（如 Hi-Res / 杜比）不存在，自动回退到最佳可用音质
+                direct_match.or_else(|| self.best_audio_url())
         }
 }
 
