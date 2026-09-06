@@ -1,6 +1,6 @@
 name: Release
 
-# 推送 v1.0.0 的 tag 时触发
+# 推送 v*.*.* 的 tag 时触发
 on:
   push:
     tags:
@@ -9,9 +9,6 @@ on:
 
 permissions:
   contents: write
-
-env:
-  BIN_NAME: ybd
 
 jobs:
   build:
@@ -42,28 +39,34 @@ jobs:
         with:
           key: ${{ matrix.target }}
 
-      - name: Build release binary
+      - name: Build release binaries
         run: cargo build --release --locked --target ${{ matrix.target }}
 
-      # 把编译好的二进制改名，带上平台标识，避免 Linux/Windows 两份文件重名冲突
-      - name: Rename binary with target name (Unix)
+      # 把编译好的二进制改名，带上平台标识（ybd 与 ybdtui 两款二进制）
+      - name: Rename binaries with target name (Unix)
         if: matrix.os != 'windows-latest'
         run: |
-          cp target/${{ matrix.target }}/release/${{ env.BIN_NAME }}${{ matrix.ext }} \
-             ${{ env.BIN_NAME }}-${{ matrix.target }}${{ matrix.ext }}
+          cp target/${{ matrix.target }}/release/ybd${{ matrix.ext }} \
+             ybd-${{ matrix.target }}${{ matrix.ext }}
+          cp target/${{ matrix.target }}/release/ybdtui${{ matrix.ext }} \
+             ybdtui-${{ matrix.target }}${{ matrix.ext }}
 
-      - name: Rename binary with target name (Windows)
+      - name: Rename binaries with target name (Windows)
         if: matrix.os == 'windows-latest'
         shell: pwsh
         run: |
-          Copy-Item "target/${{ matrix.target }}/release/${{ env.BIN_NAME }}${{ matrix.ext }}" `
-                    "${{ env.BIN_NAME }}-${{ matrix.target }}${{ matrix.ext }}"
+          Copy-Item "target/${{ matrix.target }}/release/ybd${{ matrix.ext }}" `
+                    "ybd-${{ matrix.target }}${{ matrix.ext }}"
+          Copy-Item "target/${{ matrix.target }}/release/ybdtui${{ matrix.ext }}" `
+                    "ybdtui-${{ matrix.target }}${{ matrix.ext }}"
 
-      - name: Upload artifact
+      - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ env.BIN_NAME }}-${{ matrix.target }}
-          path: ${{ env.BIN_NAME }}-${{ matrix.target }}${{ matrix.ext }}
+          name: binaries-${{ matrix.target }}
+          path: |
+            ybd-${{ matrix.target }}${{ matrix.ext }}
+            ybdtui-${{ matrix.target }}${{ matrix.ext }}
 
   release:
     name: Create GitHub Release

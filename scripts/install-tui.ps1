@@ -1,21 +1,13 @@
-param(
-    [string]$TargetBin = "ybd"
-)
-
 $ErrorActionPreference = "Stop"
 
-if ($TargetBin -ne "ybd" -and $TargetBin -ne "ybdtui") {
-    Write-Error "未知组件: $TargetBin，支持的组件名称: ybd (命令行版) 或 ybdtui (TUI终端界面版)"
-    exit 1
-}
-
 $Repo = "yumilengjiao/yumi-bilibili-download"
-$InstallDir = "$env:LOCALAPPDATA\Programs\$TargetBin"
+$InstallName = "ybdtui"
+$InstallDir = "$env:LOCALAPPDATA\Programs\$InstallName"
 $Target = "x86_64-pc-windows-msvc"
 
 # 获取最新版本号
 $ApiUrl = "https://api.github.com/repos/$Repo/releases/latest"
-$Headers = @{ "User-Agent" = "ybd-installer" }
+$Headers = @{ "User-Agent" = "ybdtui-installer" }
 $Release = Invoke-RestMethod -Uri $ApiUrl -Headers $Headers
 $Version = $Release.tag_name
 if (-not $Version) {
@@ -23,11 +15,11 @@ if (-not $Version) {
     exit 1
 }
 
-$FileName = "${TargetBin}-${Target}.exe"
+$FileName = "${InstallName}-${Target}.exe"
 $DownloadUrl = "https://github.com/$Repo/releases/download/$Version/$FileName"
 $TmpFile = Join-Path $env:TEMP $FileName
 
-Write-Host "目标组件: $TargetBin"
+Write-Host "目标组件: $InstallName (TUI终端界面版)"
 Write-Host "版本: $Version"
 Write-Host "平台: $Target"
 Write-Host "正在下载..."
@@ -37,7 +29,7 @@ if (-not (Test-Path $InstallDir)) {
     New-Item -ItemType Directory -Path $InstallDir | Out-Null
 }
 
-$InstallPath = Join-Path $InstallDir "${TargetBin}.exe"
+$InstallPath = Join-Path $InstallDir "${InstallName}.exe"
 Move-Item -Force $TmpFile $InstallPath
 
 $UserPath = [Environment]::GetEnvironmentVariable("PATH", "User")
@@ -47,4 +39,4 @@ if ($UserPath -notlike "*$InstallDir*") {
 }
 
 Write-Host "安装完成: $InstallPath"
-Write-Host "运行 '$TargetBin' 即可启动"
+Write-Host "运行 '$InstallName' 即可启动"

@@ -2,15 +2,8 @@
 set -e
 
 REPO="yumilengjiao/yumi-bilibili-download"
+INSTALL_NAME="ybdtui"
 INSTALL_DIR="${HOME}/.local/bin"
-
-# 默认安装 cli (ybd)，支持参数指定: ./install.sh [ybd|ybdtui]
-TARGET_BIN="${1:-ybd}"
-
-if [ "$TARGET_BIN" != "ybd" ] && [ "$TARGET_BIN" != "ybdtui" ]; then
-  echo "未知组件: $TARGET_BIN，支持的组件名称: ybd (命令行版) 或 ybdtui (TUI终端界面版)" >&2
-  exit 1
-fi
 
 detect_target() {
   OS=$(uname -s)
@@ -26,7 +19,7 @@ detect_target() {
     esac
     ;;
   *)
-    echo "不支持的操作系统: $OS，请使用 Windows 的 install.ps1" >&2
+    echo "不支持的操作系统: $OS，请使用 Windows 的 install-tui.ps1" >&2
     exit 1
     ;;
   esac
@@ -65,11 +58,11 @@ if [ -z "$VERSION" ]; then
   exit 1
 fi
 
-FILE_NAME="${TARGET_BIN}-${TARGET}"
+FILE_NAME="${INSTALL_NAME}-${TARGET}"
 DOWNLOAD_URL="https://github.com/${REPO}/releases/download/${VERSION}/${FILE_NAME}"
 TMP_FILE=$(mktemp)
 
-echo "目标组件: ${TARGET_BIN}"
+echo "目标组件: ${INSTALL_NAME} (TUI终端界面版)"
 echo "版本: ${VERSION}"
 echo "平台: ${TARGET}"
 echo "正在下载..."
@@ -77,9 +70,9 @@ echo "正在下载..."
 download "$DOWNLOAD_URL" "$TMP_FILE"
 chmod +x "$TMP_FILE"
 mkdir -p "$INSTALL_DIR"
-mv "$TMP_FILE" "${INSTALL_DIR}/${TARGET_BIN}"
+mv "$TMP_FILE" "${INSTALL_DIR}/${INSTALL_NAME}"
 
-echo "安装完成: ${INSTALL_DIR}/${TARGET_BIN}"
+echo "安装完成: ${INSTALL_DIR}/${INSTALL_NAME}"
 
 case ":${PATH}:" in
 *":${INSTALL_DIR}:"*) ;;
@@ -89,4 +82,4 @@ case ":${PATH}:" in
   ;;
 esac
 
-echo "安装成功！运行 '${TARGET_BIN}' 即可启动"
+echo "安装成功！运行 '${INSTALL_NAME}' 即可启动"
