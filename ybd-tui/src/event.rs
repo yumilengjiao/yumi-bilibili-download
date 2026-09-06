@@ -34,6 +34,7 @@ pub enum AppEvent {
                 downloaded: u64,
                 total: Option<u64>,
         },
+        #[allow(dead_code)]
         TaskMerging {
                 task_id: usize,
         },

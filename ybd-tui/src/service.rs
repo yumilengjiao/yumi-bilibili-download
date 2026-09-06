@@ -420,11 +420,21 @@ pub async fn execute_download(
         }
 
         let acc = match account {
-                | Some(a) => a,
+                | Some(a) => {
+                        if a.is_expired() {
+                                let _ = tx.send(AppEvent::TaskFailed {
+                                        task_id,
+                                        error: "账号登录凭据已过期，请先按 1 进入个人中心重新扫码登录".to_string(),
+                                });
+                                return;
+                        }
+                        a
+                },
                 | None => {
                         let _ = tx.send(AppEvent::TaskFailed {
                                 task_id,
-                                error: "未登录，批量/高画质下载需要先登录账号".to_string(),
+                                error: "未登录账号！请先按 1 进入个人中心按 r 扫码登录后再下载"
+                                        .to_string(),
                         });
                         return;
                 },
@@ -445,10 +455,7 @@ pub async fn execute_download(
         if batch || util::extract_media_id(&url).is_ok() {
                 let ml_id = match util::extract_media_id(&url) {
                         | Ok(id) => id,
-                        | Err(_) => {
-                                // 如果只是开启批量但是单视频，走单视频逻辑
-                                "".to_string()
-                        },
+                        | Err(_) => "".to_string(),
                 };
 
                 if !ml_id.is_empty() {
@@ -496,10 +503,19 @@ pub async fn execute_download(
                                 pn += 1;
                         }
 
+                        if bv_ids.is_empty() {
+                                let _ = tx.send(AppEvent::TaskFailed {
+                                        task_id,
+                                        error: "合集内没有找到有效视频".into(),
+                                });
+                                return;
+                        }
+
+                        let total_count = bv_ids.len();
                         let bc = Arc::new(bili_client);
                         let base_path = Arc::new(output_dir);
                         let ffmpeg = Arc::new(ffmpeg_path);
-                        let semaphore = Arc::new(Semaphore::new(4));
+                        let semaphore = Arc::new(Semaphore::new(2));
                         let mut handlers = Vec::new();
 
                         for (idx, bv_id) in bv_ids.into_iter().enumerate() {
@@ -536,6 +552,21 @@ pub async fn execute_download(
                                         };
 
                                         let sanitized = sanitize_filename::sanitize(&title);
+                                        let _ = tx_inner.send(AppEvent::TaskCreated {
+                                                task_id: sub_id,
+                                                bvid: bv_id.clone(),
+                                                title: format!(
+                                                        "[{}/{}] {}",
+                                                        idx + 1,
+                                                        total_count,
+                                                        title
+                                                ),
+                                                mode,
+                                        });
+
+                                        let tx_v = tx_inner.clone();
+                                        let tx_a = tx_inner.clone();
+
                                         match mode {
                                                 | DownloadMode::Cover => {
                                                         let client = match Client::builder()
@@ -555,29 +586,59 @@ pub async fn execute_download(
                                                                 )
                                                                 .await;
                                                         }
+                                                        let _ = tx_inner.send(
+                                                                AppEvent::TaskCompleted {
+                                                                        task_id: sub_id,
+                                                                },
+                                                        );
                                                 },
                                                 | DownloadMode::Audio => {
                                                         let audio_path = base_path
                                                                 .join(format!("{}.m4a", sanitized));
-                                                        if !audio_path.exists() {
-                                                                if let Ok(pur) =
-                                                                        PlayUrlResponse::new(
-                                                                                &bc, &bv_id,
-                                                                        )
+                                                        if audio_path.exists() {
+                                                                let _ = tx_inner.send(
+                                                                        AppEvent::TaskCompleted {
+                                                                                task_id: sub_id,
+                                                                        },
+                                                                );
+                                                                return;
+                                                        }
+
+                                                        if let Ok(pur) =
+                                                                PlayUrlResponse::new(&bc, &bv_id)
                                                                         .await
-                                                                {
-                                                                        let opt =
-                                                                                DownloadOption::builder()
-                                                                                        .audio_path(
-                                                                                                &audio_path,
-                                                                                        )
-                                                                                        .audio_quality(
-                                                                                                audio_quality,
-                                                                                        )
-                                                                                        .build();
-                                                                        let _ =
-                                                                                actuator::download_audio(&bc, &pur, &opt)
-                                                                                        .await;
+                                                        {
+                                                                let opt = DownloadOption::builder()
+                                                                        .audio_path(&audio_path)
+                                                                        .audio_quality(audio_quality)
+                                                                        .on_audio_progress(Arc::new(move |d, t| {
+                                                                                let _ = tx_a.send(AppEvent::TaskAudioProgress {
+                                                                                        task_id: sub_id,
+                                                                                        downloaded: d,
+                                                                                        total: t,
+                                                                                });
+                                                                        }))
+                                                                        .build();
+                                                                let res = actuator::download_audio(
+                                                                        &bc, &pur, &opt,
+                                                                )
+                                                                .await;
+                                                                if res.is_ok() {
+                                                                        if !util::check_cover_box(
+                                                                                &audio_path,
+                                                                        )
+                                                                        .unwrap_or(true)
+                                                                        {
+                                                                                if let Ok(cb) = util::download_cover_bytes(&bc, &pic).await {
+                                                                                        let _ = util::add_cover_box(&audio_path, cb);
+                                                                                }
+                                                                        }
+                                                                        let _ = tx_inner.send(AppEvent::TaskCompleted { task_id: sub_id });
+                                                                } else if let Err(e) = res {
+                                                                        let _ = tx_inner.send(AppEvent::TaskFailed {
+                                                                                task_id: sub_id,
+                                                                                error: e.to_string(),
+                                                                        });
                                                                 }
                                                         }
                                                 },
@@ -588,44 +649,55 @@ pub async fn execute_download(
                                                                 .with_extension("video.tmp");
                                                         let a_tmp = video_path
                                                                 .with_extension("audio.tmp");
-                                                        if !video_path.exists() {
-                                                                if let Ok(pur) =
-                                                                        PlayUrlResponse::new(
-                                                                                &bc, &bv_id,
-                                                                        )
+                                                        if video_path.exists() {
+                                                                let _ = tx_inner.send(
+                                                                        AppEvent::TaskCompleted {
+                                                                                task_id: sub_id,
+                                                                        },
+                                                                );
+                                                                return;
+                                                        }
+
+                                                        if let Ok(pur) =
+                                                                PlayUrlResponse::new(&bc, &bv_id)
                                                                         .await
-                                                                {
-                                                                        let mut b =
-                                                                                DownloadOption::builder()
-                                                                                        .video_encode(
-                                                                                                video_encode,
-                                                                                        )
-                                                                                        .video_quality(
-                                                                                                video_quality,
-                                                                                        )
-                                                                                        .audio_quality(
-                                                                                                audio_quality,
-                                                                                        )
-                                                                                        .video_path(
-                                                                                                &v_tmp,
-                                                                                        )
-                                                                                        .audio_path(
-                                                                                                &a_tmp,
-                                                                                        )
-                                                                                        .output(
-                                                                                                &video_path,
-                                                                                        );
-                                                                        if let Some(ref ff) =
-                                                                                *ffmpeg_s
-                                                                        {
-                                                                                b = b.ffmpeg_path(
-                                                                                        ff,
-                                                                                );
-                                                                        }
-                                                                        let opt = b.build();
-                                                                        let _ =
-                                                                                actuator::download_video(&bc, &pur, &opt)
-                                                                                        .await;
+                                                        {
+                                                                let mut b = DownloadOption::builder()
+                                                                        .video_encode(video_encode)
+                                                                        .video_quality(video_quality)
+                                                                        .audio_quality(audio_quality)
+                                                                        .video_path(&v_tmp)
+                                                                        .audio_path(&a_tmp)
+                                                                        .output(&video_path)
+                                                                        .on_video_progress(Arc::new(move |d, t| {
+                                                                                let _ = tx_v.send(AppEvent::TaskVideoProgress {
+                                                                                        task_id: sub_id,
+                                                                                        downloaded: d,
+                                                                                        total: t,
+                                                                                });
+                                                                        }))
+                                                                        .on_audio_progress(Arc::new(move |d, t| {
+                                                                                let _ = tx_a.send(AppEvent::TaskAudioProgress {
+                                                                                        task_id: sub_id,
+                                                                                        downloaded: d,
+                                                                                        total: t,
+                                                                                });
+                                                                        }));
+                                                                if let Some(ref ff) = *ffmpeg_s {
+                                                                        b = b.ffmpeg_path(ff);
+                                                                }
+                                                                let opt = b.build();
+                                                                let res = actuator::download_video(
+                                                                        &bc, &pur, &opt,
+                                                                )
+                                                                .await;
+                                                                if res.is_ok() {
+                                                                        let _ = tx_inner.send(AppEvent::TaskCompleted { task_id: sub_id });
+                                                                } else if let Err(e) = res {
+                                                                        let _ = tx_inner.send(AppEvent::TaskFailed {
+                                                                                task_id: sub_id,
+                                                                                error: e.to_string(),
+                                                                        });
                                                                 }
                                                         }
                                                 },
@@ -698,7 +770,10 @@ pub async fn execute_download(
                                 | Err(e) => {
                                         let _ = tx.send(AppEvent::TaskFailed {
                                                 task_id,
-                                                error: format!("获取播放流地址失败: {}", e),
+                                                error: format!(
+                                                        "获取播放流地址失败 (请检查登录状态): {}",
+                                                        e
+                                                ),
                                         });
                                         return;
                                 },
@@ -752,7 +827,10 @@ pub async fn execute_download(
                                 | Err(e) => {
                                         let _ = tx.send(AppEvent::TaskFailed {
                                                 task_id,
-                                                error: format!("获取播放地址失败: {}", e),
+                                                error: format!(
+                                                        "获取播放地址失败 (请检查登录状态): {}",
+                                                        e
+                                                ),
                                         });
                                         return;
                                 },
@@ -788,7 +866,6 @@ pub async fn execute_download(
                         }
 
                         let option = builder.build();
-                        let _ = tx.send(AppEvent::TaskMerging { task_id });
 
                         match actuator::download_video(&bili_client, &pur, &option).await {
                                 | Ok(_) => {

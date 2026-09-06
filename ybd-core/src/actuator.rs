@@ -277,8 +277,9 @@ pub async fn merge_video_audio(
         ffmpeg_path: Option<&Path>,
 ) -> Result<()> {
         let ffmpeg = ffmpeg_path.unwrap_or(Path::new("ffmpeg"));
-        let status = process::Command::new(ffmpeg)
+        let output = process::Command::new(ffmpeg)
                 .args([
+                        "-y",
                         "-i",
                         video_path.to_str().unwrap(),
                         "-i",
@@ -287,10 +288,15 @@ pub async fn merge_video_audio(
                         "copy",
                         output_path.to_str().unwrap(),
                 ])
-                .status()
+                .stdin(std::process::Stdio::null())
+                .stdout(std::process::Stdio::null())
+                .stderr(std::process::Stdio::piped())
+                .output()
                 .await?;
-        if !status.success() {
-                return Err(Error::Normal("ffmpeg 合并失败".into()));
+        if !output.status.success() {
+                let err_msg = String::from_utf8_lossy(&output.stderr);
+                let clean_msg = err_msg.lines().next_back().unwrap_or("FFmpeg 合并失败");
+                return Err(Error::Normal(format!("FFmpeg 合并失败: {}", clean_msg)));
         }
         Ok(())
 }
