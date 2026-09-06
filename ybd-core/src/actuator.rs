@@ -4,7 +4,6 @@
 
 use std::path::Path;
 
-
 use clap::ValueEnum;
 use futures::StreamExt;
 use reqwest::Client;

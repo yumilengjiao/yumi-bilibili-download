@@ -4,7 +4,6 @@
 
 use std::{collections::HashMap, time::Duration};
 
-
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 
 pub struct DownloadProgress {

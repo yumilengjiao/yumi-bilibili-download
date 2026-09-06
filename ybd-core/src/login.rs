@@ -4,7 +4,6 @@
 
 use std::time::SystemTime;
 
-
 use qrcode::{QrCode, render::unicode};
 use reqwest::Client;
 use serde_json::Value;

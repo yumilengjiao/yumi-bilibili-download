@@ -4,7 +4,6 @@
 
 use std::{env, sync::Arc};
 
-
 use colored::Colorize;
 use futures::future;
 use reqwest::Client;

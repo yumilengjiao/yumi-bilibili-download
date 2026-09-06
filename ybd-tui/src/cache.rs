@@ -1,6 +1,6 @@
-//! 本地认证缓存模块
+//! 认证凭据缓存模块
 //!
-//! 负责从本地磁盘读写与持久化用户登录会话（SESSDATA 等凭证）。
+//! 负责从磁盘加载与保存 Bilibili 登录凭据（SESSDATA 等）。
 
 use std::{fs::File, path::Path};
 
@@ -9,9 +9,6 @@ use ybd_core::{
         model::account::Account,
 };
 
-/// 从缓存信息中加载用户信息(包含sessdata)
-///
-/// * `source`: io源
 pub fn load_user_from_file(source: &Path) -> Result<Account> {
         let file = File::open(source)
                 .map_err(|e| Error::Normal(format!("不存在用户认证信息文件: {}", e)))?;
@@ -19,18 +16,21 @@ pub fn load_user_from_file(source: &Path) -> Result<Account> {
         Ok(account)
 }
 
-/// 保存认证信息
-///
-/// * `account`: 账户
-/// * `dest`: 保存目的地
 pub fn save_user_info(
-        account: Account,
+        account: &Account,
         dest: &Path,
 ) -> Result<bool> {
         if let Some(parent) = dest.parent() {
                 std::fs::create_dir_all(parent)?;
         }
         let file = File::create(dest)?;
-        serde_json::to_writer(file, &account)?;
+        serde_json::to_writer(file, account)?;
         Ok(true)
+}
+
+pub fn remove_user_info(dest: &Path) -> Result<()> {
+        if dest.exists() {
+                std::fs::remove_file(dest)?;
+        }
+        Ok(())
 }

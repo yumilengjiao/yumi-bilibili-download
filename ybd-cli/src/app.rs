@@ -4,7 +4,6 @@
 
 use ybd_core::{error::Result, model::account::Account};
 
-
 use crate::{cache::load_user_from_file, config::Config, directories::APP_PATH};
 
 #[derive(Debug)]

@@ -1,8 +1,6 @@
 use std::error::Error;
 
-use ybd_core::{
-        client::BiliClient, login, model::video::PlayUrlResponse, util::extract_bv_id,
-};
+use ybd_core::{client::BiliClient, login, model::video::PlayUrlResponse, util::extract_bv_id};
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
         let account = login::get_account().await?;

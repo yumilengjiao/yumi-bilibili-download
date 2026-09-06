@@ -4,7 +4,6 @@
 
 use std::path::PathBuf;
 
-
 use clap::{Args, Parser, Subcommand};
 use ybd_core::{
         actuator::Mode,

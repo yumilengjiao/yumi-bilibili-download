@@ -4,7 +4,6 @@
 
 use reqwest::Client;
 
-
 use crate::{error::Result, model::account::Account, url::UA};
 
 #[derive(Debug)]

@@ -4,7 +4,6 @@
 
 use std::io;
 
-
 use colored::Colorize;
 use thiserror::Error;
 

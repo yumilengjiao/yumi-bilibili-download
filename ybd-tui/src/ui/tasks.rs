@@ -1,0 +1,283 @@
+//! 下载任务列表页面渲染模块
+
+use ratatui::{
+        Frame,
+        layout::Rect,
+        style::{Color, Modifier, Style},
+        text::{Line, Span},
+        widgets::Paragraph,
+};
+
+use crate::{
+        app::App,
+        model::{DownloadMode, TaskStatus},
+};
+
+pub fn render_tasks_view(
+        f: &mut Frame,
+        app: &App,
+        area: Rect,
+) {
+        let mut lines = Vec::new();
+        lines.push(Line::from(""));
+
+        let active_tasks: Vec<_> = app
+                .tasks
+                .iter()
+                .enumerate()
+                .filter(|(_, t)| t.status != TaskStatus::Completed)
+                .collect();
+        let completed_tasks: Vec<_> = app
+                .tasks
+                .iter()
+                .enumerate()
+                .filter(|(_, t)| t.status == TaskStatus::Completed)
+                .collect();
+
+        lines.push(Line::from(vec![Span::styled(
+                format!("  进行中任务 ({})", active_tasks.len()),
+                Style::default()
+                        .fg(Color::Cyan)
+                        .add_modifier(Modifier::BOLD),
+        )]));
+
+        if active_tasks.is_empty() {
+                lines.push(Line::from(vec![Span::styled(
+                        "    暂无进行中的下载任务 (前往 [资源下载] 页面提交链接)",
+                        Style::default().fg(Color::DarkGray),
+                )]));
+                lines.push(Line::from(""));
+        } else {
+                lines.push(Line::from(""));
+                for (idx, task) in active_tasks {
+                        let is_selected = app.selected_task_idx == idx;
+                        let prefix = if is_selected { "  ❯ " } else { "    " };
+
+                        let mode_tag = match task.mode {
+                                | DownloadMode::Video => "[视频]",
+                                | DownloadMode::Audio => "[音频]",
+                                | DownloadMode::Cover => "[封面]",
+                        };
+
+                        lines.push(Line::from(vec![
+                                Span::styled(
+                                        prefix,
+                                        if is_selected {
+                                                Style::default().fg(Color::Cyan)
+                                        } else {
+                                                Style::default().fg(Color::DarkGray)
+                                        },
+                                ),
+                                Span::styled(
+                                        format!("{} ", mode_tag),
+                                        Style::default().fg(Color::LightCyan),
+                                ),
+                                Span::styled(
+                                        &task.title,
+                                        if is_selected {
+                                                Style::default()
+                                                        .fg(Color::White)
+                                                        .add_modifier(Modifier::BOLD)
+                                        } else {
+                                                Style::default().fg(Color::Gray)
+                                        },
+                                ),
+                        ]));
+
+                        match &task.status {
+                                | TaskStatus::Downloading => {
+                                        if task.mode == DownloadMode::Video {
+                                                let (pct_v, bar_v) = make_progress_bar(
+                                                        task.video_downloaded,
+                                                        task.video_total,
+                                                );
+                                                let (pct_a, bar_a) = make_progress_bar(
+                                                        task.audio_downloaded,
+                                                        task.audio_total,
+                                                );
+
+                                                lines.push(Line::from(vec![
+                                                        Span::styled(
+                                                                "      视频  ",
+                                                                Style::default()
+                                                                        .fg(Color::DarkGray),
+                                                        ),
+                                                        Span::styled(
+                                                                bar_v,
+                                                                Style::default().fg(Color::Cyan),
+                                                        ),
+                                                        Span::styled(
+                                                                format!("  {:.1}%", pct_v),
+                                                                Style::default().fg(Color::White),
+                                                        ),
+                                                        Span::styled(
+                                                                format!(
+                                                                        "  ({} / {})",
+                                                                        format_bytes(
+                                                                                task.video_downloaded,
+                                                                        ),
+                                                                        task.video_total
+                                                                                .map(format_bytes)
+                                                                                .unwrap_or_else(
+                                                                                        || {
+                                                                                                "未知".into()
+                                                                                        },
+                                                                                )
+                                                                ),
+                                                                Style::default()
+                                                                        .fg(Color::DarkGray),
+                                                        ),
+                                                ]));
+
+                                                lines.push(Line::from(vec![
+                                                        Span::styled(
+                                                                "      音频  ",
+                                                                Style::default()
+                                                                        .fg(Color::DarkGray),
+                                                        ),
+                                                        Span::styled(
+                                                                bar_a,
+                                                                Style::default().fg(Color::Green),
+                                                        ),
+                                                        Span::styled(
+                                                                format!("  {:.1}%", pct_a),
+                                                                Style::default().fg(Color::White),
+                                                        ),
+                                                        Span::styled(
+                                                                format!(
+                                                                        "  ({} / {})",
+                                                                        format_bytes(
+                                                                                task.audio_downloaded,
+                                                                        ),
+                                                                        task.audio_total
+                                                                                .map(format_bytes)
+                                                                                .unwrap_or_else(
+                                                                                        || {
+                                                                                                "未知".into()
+                                                                                        },
+                                                                                )
+                                                                ),
+                                                                Style::default()
+                                                                        .fg(Color::DarkGray),
+                                                        ),
+                                                ]));
+                                        } else {
+                                                let (pct_a, bar_a) = make_progress_bar(
+                                                        task.audio_downloaded,
+                                                        task.audio_total,
+                                                );
+                                                lines.push(Line::from(vec![
+                                                        Span::styled(
+                                                                "      进度  ",
+                                                                Style::default()
+                                                                        .fg(Color::DarkGray),
+                                                        ),
+                                                        Span::styled(
+                                                                bar_a,
+                                                                Style::default().fg(Color::Cyan),
+                                                        ),
+                                                        Span::styled(
+                                                                format!("  {:.1}%", pct_a),
+                                                                Style::default().fg(Color::White),
+                                                        ),
+                                                ]));
+                                        }
+                                },
+                                | TaskStatus::Merging => {
+                                        lines.push(Line::from(vec![
+                                                Span::styled(
+                                                        "      状态: ",
+                                                        Style::default().fg(Color::DarkGray),
+                                                ),
+                                                Span::styled(
+                                                        "正在合并音视频轨 (FFmpeg)...",
+                                                        Style::default().fg(Color::Yellow),
+                                                ),
+                                        ]));
+                                },
+                                | TaskStatus::Failed(e) => {
+                                        lines.push(Line::from(vec![
+                                                Span::styled(
+                                                        "      错误: ",
+                                                        Style::default().fg(Color::Red),
+                                                ),
+                                                Span::styled(
+                                                        e,
+                                                        Style::default().fg(Color::LightRed),
+                                                ),
+                                        ]));
+                                },
+                                | _ => {},
+                        }
+                        lines.push(Line::from(""));
+                }
+        }
+
+        // 已完成列表
+        lines.push(Line::from(vec![Span::styled(
+                format!("  已完成记录 ({})", completed_tasks.len()),
+                Style::default()
+                        .fg(Color::Cyan)
+                        .add_modifier(Modifier::BOLD),
+        )]));
+
+        if completed_tasks.is_empty() {
+                lines.push(Line::from(vec![Span::styled(
+                        "    暂无历史下载记录",
+                        Style::default().fg(Color::DarkGray),
+                )]));
+        } else {
+                lines.push(Line::from(""));
+                for (_, task) in completed_tasks {
+                        lines.push(Line::from(vec![
+                                Span::styled("    ✓ ", Style::default().fg(Color::Green)),
+                                Span::styled(&task.title, Style::default().fg(Color::Gray)),
+                                Span::styled("  [已完成]", Style::default().fg(Color::DarkGray)),
+                        ]));
+                }
+        }
+
+        lines.push(Line::from(""));
+        lines.push(Line::from(vec![
+                Span::styled("  快捷操作: ", Style::default().fg(Color::DarkGray)),
+                Span::styled("j / k ", Style::default().fg(Color::Cyan)),
+                Span::styled("上下选择     ", Style::default().fg(Color::Gray)),
+                Span::styled("d ", Style::default().fg(Color::Cyan)),
+                Span::styled("移除任务     ", Style::default().fg(Color::Gray)),
+                Span::styled("c ", Style::default().fg(Color::Cyan)),
+                Span::styled("清空已完成", Style::default().fg(Color::Gray)),
+        ]));
+
+        f.render_widget(Paragraph::new(lines), area);
+}
+
+fn make_progress_bar(
+        downloaded: u64,
+        total: Option<u64>,
+) -> (f64, String) {
+        let total_bytes = total.unwrap_or(0);
+        let ratio = if total_bytes > 0 {
+                (downloaded as f64 / total_bytes as f64).clamp(0.0, 1.0)
+        } else {
+                0.0
+        };
+
+        let width: usize = 30;
+        let filled = (ratio * width as f64) as usize;
+        let empty = width.saturating_sub(filled);
+
+        let bar = format!("{}{}", "█".repeat(filled), "░".repeat(empty));
+        (ratio * 100.0, bar)
+}
+
+fn format_bytes(bytes: u64) -> String {
+        if bytes >= 1024 * 1024 * 1024 {
+                format!("{:.2} GB", bytes as f64 / (1024.0 * 1024.0 * 1024.0))
+        } else if bytes >= 1024 * 1024 {
+                format!("{:.1} MB", bytes as f64 / (1024.0 * 1024.0))
+        } else if bytes >= 1024 {
+                format!("{:.0} KB", bytes as f64 / 1024.0)
+        } else {
+                format!("{} B", bytes)
+        }
+}

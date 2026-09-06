@@ -4,7 +4,6 @@
 
 use std::{path::Path, sync::Arc};
 
-
 use crate::model::quality::{AudioQuality, VideoEncode, VideoQuality};
 
 /// 用于构造可选的下载参数

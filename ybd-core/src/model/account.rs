@@ -4,7 +4,7 @@ use std::time::SystemTime;
 
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Account {
         user_id: String,
         exp: SystemTime,
@@ -12,7 +12,7 @@ pub struct Account {
 }
 
 impl Account {
-        pub(crate) fn new(
+        pub fn new(
                 user_id: String,
                 exp: SystemTime,
                 sessdata: String,
