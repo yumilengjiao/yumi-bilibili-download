@@ -42,6 +42,13 @@ ratatui = "0.29.0"
 crossterm = { version = "0.28.1", features = ["event-stream"] }
 httpdate = "1.0.3"
 
+[workspace.metadata.release]
+push = true
+tag = true
+publish = false
+tag-name = "v{{version}}"
+tag-message = "Realease {{version}}"
+
 [profile.release]
 strip = true
 opt-level = 3
