@@ -277,16 +277,19 @@ pub async fn merge_video_audio(
         ffmpeg_path: Option<&Path>,
 ) -> Result<()> {
         let ffmpeg = ffmpeg_path.unwrap_or(Path::new("ffmpeg"));
+        let video_str = video_path
+                .to_str()
+                .ok_or(Error::Path("视频临时路径包含非法编码字符".into()))?;
+        let audio_str = audio_path
+                .to_str()
+                .ok_or(Error::Path("音频临时路径包含非法编码字符".into()))?;
+        let output_str = output_path
+                .to_str()
+                .ok_or(Error::Path("输出路径包含非法编码字符".into()))?;
+
         let output = process::Command::new(ffmpeg)
                 .args([
-                        "-y",
-                        "-i",
-                        video_path.to_str().unwrap(),
-                        "-i",
-                        audio_path.to_str().unwrap(),
-                        "-c",
-                        "copy",
-                        output_path.to_str().unwrap(),
+                        "-y", "-i", video_str, "-i", audio_str, "-c", "copy", output_str,
                 ])
                 .stdin(std::process::Stdio::null())
                 .stdout(std::process::Stdio::null())
@@ -317,7 +320,7 @@ async fn download_url(
                         Err(e) => last_err = Some(e),
                 }
         }
-        Err(last_err.unwrap())
+        Err(last_err.unwrap_or(Error::Normal("下载失败，无可用重试结果".into())))
 }
 
 async fn try_download_url(

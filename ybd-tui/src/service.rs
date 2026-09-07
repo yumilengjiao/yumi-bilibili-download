@@ -31,10 +31,15 @@ pub async fn fetch_user_profile(
 ) {
         let uid = account.get_user_id().to_string();
         let sessdata = account.get_sessdata();
-        let sessdata_preview = if sessdata.len() > 10 {
-                format!("{}...{}", &sessdata[0..4], &sessdata[sessdata.len() - 4..])
-        } else {
-                "******".to_string()
+        let sessdata_preview = {
+                let chars: Vec<char> = sessdata.chars().collect();
+                if chars.len() > 10 {
+                        let head: String = chars.iter().take(4).collect();
+                        let tail: String = chars.iter().skip(chars.len() - 4).collect();
+                        format!("{}...{}", head, tail)
+                } else {
+                        "******".to_string()
+                }
         };
 
         if let Ok(client) = BiliClient::new(account) {

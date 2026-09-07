@@ -135,8 +135,11 @@ pub fn render_download_view(
                         ]));
                 }
                 if !info.desc.is_empty() {
-                        let short_desc = if info.desc.len() > 60 {
-                                format!("{}...", &info.desc[0..60])
+                        // 按字符（非字节）截取，避免中文等多字节字符切割时 panic
+                        let char_count = info.desc.chars().count();
+                        let short_desc = if char_count > 60 {
+                                let truncated: String = info.desc.chars().take(60).collect();
+                                format!("{}...", truncated)
                         } else {
                                 info.desc.clone()
                         };

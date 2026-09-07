@@ -76,10 +76,15 @@ pub fn render_account_view(
                 ]));
 
                 let sessdata = account.get_sessdata();
-                let sess_display = if sessdata.len() > 10 {
-                        format!("{}...{}", &sessdata[0..4], &sessdata[sessdata.len() - 4..])
-                } else {
-                        "******".to_string()
+                let sess_display = {
+                        let chars: Vec<char> = sessdata.chars().collect();
+                        if chars.len() > 10 {
+                                let head: String = chars.iter().take(4).collect();
+                                let tail: String = chars.iter().skip(chars.len() - 4).collect();
+                                format!("{}...{}", head, tail)
+                        } else {
+                                "******".to_string()
+                        }
                 };
 
                 lines.push(Line::from(vec![
