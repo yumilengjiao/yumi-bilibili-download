@@ -278,7 +278,8 @@ async fn download_video(
                                         bv_id, e
                                 ))
                         })?;
-                let video_path = output.join(format!("{}.mp4", title));
+                let video_path =
+                        output.join(format!("{}.mp4", sanitize_filename::sanitize(&title)));
                 let pur = PlayUrlResponse::new(&bili_client, &bv_id)
                         .await
                         .map_err(|e| {
@@ -515,7 +516,8 @@ async fn download_audio(
                                         bv_id, e
                                 ))
                         })?;
-                let audio_path = output.join(format!("{}.m4a", title));
+                let audio_path =
+                        output.join(format!("{}.m4a", sanitize_filename::sanitize(&title)));
 
                 if audio_path.exists() {
                         if !util::check_cover_box(&audio_path)? {
@@ -697,7 +699,8 @@ async fn download_cover(
                 let client = Client::builder().user_agent(UA).build()?;
                 let (title, cover, _) =
                         actuator::get_basic_video_info(&bv_id, Some(&bili_client)).await?;
-                let cover_path = output.join(format!("{}.png", title));
+                let cover_path =
+                        output.join(format!("{}.png", sanitize_filename::sanitize(&title)));
                 actuator::download_cover(&client, &cover, &cover_path).await?;
         }
         Ok(())

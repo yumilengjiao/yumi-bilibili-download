@@ -2,7 +2,7 @@
 //!
 //! 包含视频、音频、封面下载及使用 ffmpeg 进行音视频合并的高层 API。
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use clap::ValueEnum;
 use futures::StreamExt;
@@ -74,17 +74,8 @@ pub async fn download_cover(
         if path.is_dir() {
                 return Err(Error::Path("路径不能是目录".into()));
         }
-        let safe_path = path
-                .parent()
-                .unwrap_or(Path::new("."))
-                .join(sanitize_filename::sanitize(
-                        path.file_name()
-                                .unwrap_or_default()
-                                .to_string_lossy()
-                                .as_ref(),
-                ));
         let mut res = client.get(url).send().await?;
-        let mut file = File::create(safe_path).await?;
+        let mut file = File::create(sanitize_path(path)).await?;
         while let Some(chunk) = res.chunk().await? {
                 io::AsyncWriteExt::write_all(&mut file, &chunk).await?;
         }
@@ -310,12 +301,18 @@ async fn download_url(
         path: &Path,
         on_progress: Option<&(dyn Fn(u64, Option<u64>) + Send + Sync)>,
 ) -> Result<()> {
+        if path.is_dir() {
+                return Err(Error::Path("路径不能是目录".into()));
+        }
+
+        let safe_path = sanitize_path(path);
+
         let mut last_err = None;
         for attempt in 0..3 {
                 if attempt > 0 {
                         tokio::time::sleep(tokio::time::Duration::from_secs(attempt * 2)).await;
                 }
-                match try_download_url(bili_client, url, path, on_progress).await {
+                match try_download_url(bili_client, url, &safe_path, on_progress).await {
                         Ok(()) => return Ok(()),
                         Err(e) => last_err = Some(e),
                 }
@@ -343,4 +340,19 @@ async fn try_download_url(
                 }
         }
         Ok(())
+}
+
+/// 清理路径中的文件名，替换掉 Windows/Linux 下非法的字符（如 `/`、`\`、`:`、`"` 等），
+/// 只保留目录部分不变，避免视频标题中含特殊字符时创建文件失败
+///
+/// * `path`: 原始路径
+fn sanitize_path(path: &Path) -> PathBuf {
+        path.parent()
+                .unwrap_or(Path::new("."))
+                .join(sanitize_filename::sanitize(
+                        path.file_name()
+                                .unwrap_or_default()
+                                .to_string_lossy()
+                                .as_ref(),
+                ))
 }
