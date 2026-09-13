@@ -15,7 +15,7 @@ mod ui;
 use std::{io, time::Duration};
 
 use crossterm::{
-        event::{Event, EventStream},
+        event::{Event, EventStream, KeyEventKind},
         execute,
         terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
 };
@@ -64,7 +64,7 @@ async fn main() -> Result<()> {
                         }
                         | Some(Ok(crossterm_event)) = reader.next() => {
                                 match crossterm_event {
-                                        | Event::Key(key) => {
+                                        | Event::Key(key) if key.kind == KeyEventKind::Press => {
                                                 handle_key_event(&mut app, key);
                                         }
                                         | Event::Resize(w, h) => {
