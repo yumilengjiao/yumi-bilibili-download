@@ -541,7 +541,7 @@ pub async fn execute_download(
                                                 Err(_) => return,
                                         };
 
-                                        let (title, pic, _) = match actuator::get_basic_video_info(
+                                        let detail = match actuator::get_video_detail(
                                                 &bv_id,
                                                 Some(&bc),
                                         )
@@ -550,15 +550,17 @@ pub async fn execute_download(
                                                 Ok(info) => info,
                                                 Err(e) => {
                                                         let _ = tx_inner.send(AppEvent::TaskFailed {
-                                                                task_id: sub_id,
-                                                                error: format!(
-                                                                        "获取信息失败 BV {}: {}",
-                                                                        bv_id, e
-                                                                ),
-                                                        });
+                                                                        task_id: sub_id,
+                                                                        error: format!(
+                                                                                "获取信息失败 BV {}: {}",
+                                                                                bv_id, e
+                                                                        ),
+                                                                });
                                                         return;
                                                 },
                                         };
+                                        let title = detail.title.clone();
+                                        let pic = detail.pic.clone();
 
                                         let sanitized = sanitize_filename::sanitize(&title);
                                         let _ = tx_inner.send(AppEvent::TaskCreated {
@@ -628,15 +630,14 @@ pub async fn execute_download(
                                                                 )
                                                                 .await;
                                                                 if res.is_ok() {
-                                                                        if !util::check_cover_box(
+                                                                        let _ = actuator::embed_metadata(
+                                                                                &bc,
                                                                                 &audio_path,
+                                                                                &detail,
+                                                                                None,
+                                                                                None,
                                                                         )
-                                                                        .unwrap_or(true)
-                                                                        {
-                                                                                if let Ok(cb) = util::download_cover_bytes(&bc, &pic).await {
-                                                                                        let _ = util::add_cover_box(&audio_path, cb);
-                                                                                }
-                                                                        }
+                                                                        .await;
                                                                         let _ = tx_inner.send(AppEvent::TaskCompleted { task_id: sub_id });
                                                                 } else if let Err(e) = res {
                                                                         let _ = tx_inner.send(AppEvent::TaskFailed {
@@ -727,8 +728,7 @@ pub async fn execute_download(
                 },
         };
 
-        let (title, pic, _) = match actuator::get_basic_video_info(&bv_id, Some(&bili_client)).await
-        {
+        let detail = match actuator::get_video_detail(&bv_id, Some(&bili_client)).await {
                 Ok(info) => info,
                 Err(e) => {
                         let _ = tx.send(AppEvent::TaskFailed {
@@ -738,6 +738,8 @@ pub async fn execute_download(
                         return;
                 },
         };
+        let title = detail.title.clone();
+        let pic = detail.pic.clone();
 
         let sanitized_title = sanitize_filename::sanitize(&title);
 
@@ -782,16 +784,14 @@ pub async fn execute_download(
                 DownloadMode::Audio => {
                         let audio_path = output_dir.join(format!("{}.m4a", sanitized_title));
                         if audio_path.exists() {
-                                if !util::check_cover_box(&audio_path).unwrap_or(true) {
-                                        if let Ok(cover_bytes) =
-                                                util::download_cover_bytes(&bili_client, &pic).await
-                                        {
-                                                let _ = util::add_cover_box(
-                                                        &audio_path,
-                                                        cover_bytes,
-                                                );
-                                        }
-                                }
+                                let _ = actuator::embed_metadata(
+                                        &bili_client,
+                                        &audio_path,
+                                        &detail,
+                                        None,
+                                        None,
+                                )
+                                .await;
                                 let _ = tx.send(AppEvent::TaskCompleted { task_id });
                                 return;
                         }
@@ -825,19 +825,14 @@ pub async fn execute_download(
                         let option = builder.build();
                         match actuator::download_audio(&bili_client, &pur, &option).await {
                                 Ok(_) => {
-                                        if !util::check_cover_box(&audio_path).unwrap_or(true) {
-                                                if let Ok(cover_bytes) = util::download_cover_bytes(
-                                                        &bili_client,
-                                                        &pic,
-                                                )
-                                                .await
-                                                {
-                                                        let _ = util::add_cover_box(
-                                                                &audio_path,
-                                                                cover_bytes,
-                                                        );
-                                                }
-                                        }
+                                        let _ = actuator::embed_metadata(
+                                                &bili_client,
+                                                &audio_path,
+                                                &detail,
+                                                None,
+                                                None,
+                                        )
+                                        .await;
                                         let _ = tx.send(AppEvent::TaskCompleted { task_id });
                                 },
                                 Err(e) => {

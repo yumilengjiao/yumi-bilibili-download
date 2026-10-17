@@ -365,6 +365,8 @@ async fn download_audio(
                 let ml_id = util::extract_media_id(&url)?;
                 let concurrencies = app.config.concurrencies;
                 let mut bv_ids = Vec::<String>::new();
+                // 收藏夹名称，作为音频的专辑（album）字段
+                let mut album_title: Option<String> = None;
                 let mut pn = 1usize;
                 loop {
                         let resp = get_basic_collection_info(
@@ -375,6 +377,9 @@ async fn download_audio(
                         )
                         .await?;
                         let data = resp.get_data()?;
+                        if album_title.is_none() && !data.info.title.is_empty() {
+                                album_title = Some(data.info.title.clone());
+                        }
                         let bvids: Vec<String> =
                                 data.medias.iter().map(|v| v.bvid.clone()).collect();
                         bv_ids.extend(bvids);
@@ -398,19 +403,20 @@ async fn download_audio(
                         let base_path = Arc::clone(&base_path);
                         let sp = Arc::clone(&semaphore);
                         let mp = Arc::clone(&mp);
+                        let album_title = album_title.clone();
                         let jh = tokio::spawn(async move {
                                 // 信号量
                                 let _permit = sp.acquire().await?;
-                                // 基础信息
-                                let (title, pic, _) =
-                                        actuator::get_basic_video_info(&bv_id, Some(&bc))
-                                                .await
-                                                .map_err(|e| {
-                                                        Error::Normal(format!(
-                                                                "无法获取视频,BV: {}, 错误信息: {}",
-                                                                bv_id, e
-                                                        ))
-                                                })?;
+                                // 基础信息（含 UP 主、简介、发布时间、分P）
+                                let detail = actuator::get_video_detail(&bv_id, Some(&bc))
+                                        .await
+                                        .map_err(|e| {
+                                                Error::Normal(format!(
+                                                        "无法获取视频,BV: {}, 错误信息: {}",
+                                                        bv_id, e
+                                                ))
+                                        })?;
+                                let title = detail.title.clone();
                                 // 拼接文件路径
                                 let audio_path = base_path.join(format!(
                                         "{}.m4a",
@@ -420,12 +426,14 @@ async fn download_audio(
                                 if audio_path.exists() {
                                         mp.lock().unwrap().inc_total();
 
-                                        if !util::check_cover_box(&audio_path)? {
-                                                let cover_data =
-                                                        util::download_cover_bytes(&bc, &pic)
-                                                                .await?;
-                                                util::add_cover_box(&audio_path, cover_data)?;
-                                        }
+                                        actuator::embed_metadata(
+                                                &bc,
+                                                &audio_path,
+                                                &detail,
+                                                album_title.as_deref(),
+                                                None,
+                                        )
+                                        .await?;
 
                                         return Ok(());
                                 }
@@ -472,11 +480,16 @@ async fn download_audio(
 
                                 mp.lock().unwrap().inc_total();
 
-                                // 检查是否有封面,若没有则添加
-                                if result.is_ok() && !util::check_cover_box(&audio_path)? {
-                                        let cover_data =
-                                                util::download_cover_bytes(&bc, &pic).await?;
-                                        util::add_cover_box(&audio_path, cover_data)?;
+                                // 写入元数据 + 封面（已有则跳过）
+                                if result.is_ok() {
+                                        actuator::embed_metadata(
+                                                &bc,
+                                                &audio_path,
+                                                &detail,
+                                                album_title.as_deref(),
+                                                None,
+                                        )
+                                        .await?;
                                 }
 
                                 result
@@ -508,7 +521,7 @@ async fn download_audio(
                 }
         } else {
                 let bv_id = util::extract_bv_id(&url)?;
-                let (title, pic, _) = actuator::get_basic_video_info(&bv_id, Some(&bili_client))
+                let detail = actuator::get_video_detail(&bv_id, Some(&bili_client))
                         .await
                         .map_err(|e| {
                                 Error::Normal(format!(
@@ -516,15 +529,13 @@ async fn download_audio(
                                         bv_id, e
                                 ))
                         })?;
+                let title = detail.title.clone();
                 let audio_path =
                         output.join(format!("{}.m4a", sanitize_filename::sanitize(&title)));
 
                 if audio_path.exists() {
-                        if !util::check_cover_box(&audio_path)? {
-                                let cover_data =
-                                        util::download_cover_bytes(&bili_client, &pic).await?;
-                                util::add_cover_box(&audio_path, cover_data)?;
-                        }
+                        actuator::embed_metadata(&bili_client, &audio_path, &detail, None, None)
+                                .await?;
 
                         return Ok(());
                 }
@@ -566,13 +577,15 @@ async fn download_audio(
                         });
                 match result {
                         Ok(()) => {
-                                // 检查是否有封面,若没有则添加
-                                if !util::check_cover_box(&audio_path)? {
-                                        let cover_data =
-                                                util::download_cover_bytes(&bili_client, &pic)
-                                                        .await?;
-                                        util::add_cover_box(&audio_path, cover_data)?;
-                                }
+                                // 写入元数据 + 封面（已有则跳过）
+                                actuator::embed_metadata(
+                                        &bili_client,
+                                        &audio_path,
+                                        &detail,
+                                        None,
+                                        None,
+                                )
+                                .await?;
                         },
                         Err(e) => {
                                 dp.pb.finish_and_clear();

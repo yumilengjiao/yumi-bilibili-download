@@ -14,6 +14,9 @@ pub const WBI: &str = "https://api.bilibili.com/x/web-interface/nav";
 // 视频基础信息
 pub const VIDEO_INFO: &str = "https://api.bilibili.com/x/web-interface/view";
 
+// 视频标签
+pub const VIDEO_TAGS: &str = "https://api.bilibili.com/x/tag/archive/tags";
+
 // 收藏夹视频信息
 pub const MEDIO_LIST: &str = "https://api.bilibili.com/x/v3/fav/resource/list";
 

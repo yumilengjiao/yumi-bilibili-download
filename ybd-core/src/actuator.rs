@@ -14,10 +14,61 @@ use crate::{
         client::BiliClient,
         error::{Error, Result},
         model::{
-                collection::CollectionUrlResponse, download::DownloadOption, video::PlayUrlResponse,
+                collection::CollectionUrlResponse,
+                detail::{VideoDetail, VideoInfoResponse},
+                download::DownloadOption,
+                video::PlayUrlResponse,
         },
-        url::{MEDIO_LIST, UA, VIDEO_INFO},
+        url::{MEDIO_LIST, UA, VIDEO_INFO, VIDEO_TAGS},
+        util,
 };
+
+/// 一站式写入元数据 + 封面
+///
+/// 已写入且内容一致的文件会被跳过，不重复写盘。
+/// 标签获取、封面下载失败都不会中断主流程。
+///
+/// * `client`: 带凭证的客户端
+/// * `file_path`: 目标 m4a/mp4 文件
+/// * `detail`: 视频详细信息（来自 [`get_video_detail`]）
+/// * `album`: 合集/收藏夹名，`None` 时使用分区名
+/// * `cid`: 当前下载的分P，`None` 时不做分P 标记
+pub async fn embed_metadata(
+        client: &BiliClient,
+        file_path: &Path,
+        detail: &VideoDetail,
+        album: Option<&str>,
+        cid: Option<i64>,
+) -> Result<()> {
+        let mut meta = detail.media_meta(album, cid);
+
+        // 先做轻量判断，避免每次运行都重新拉标签/封面
+        let meta_ok = util::check_metadata(file_path, &meta).unwrap_or(false);
+        let cover_ok = util::check_cover_box(file_path).unwrap_or(false);
+        if meta_ok && cover_ok {
+                return Ok(());
+        }
+
+        if !meta_ok {
+                meta.lyrics = util::read_lyrics_sidecar(file_path);
+                meta.keywords = get_video_tags(&detail.bvid, Some(client)).await;
+        }
+
+        let cover = if cover_ok || detail.pic.is_empty() {
+                None
+        } else {
+                util::download_cover_bytes(client, &detail.pic).await.ok()
+        };
+
+        match util::write_metadata_with_cover(file_path, &meta, cover) {
+                Ok(()) => Ok(()),
+                // 封面格式不支持（比如 webp）时退化成只写元数据
+                Err(e) => {
+                        util::write_metadata(file_path, &meta).map_err(|_| e)?;
+                        Ok(())
+                },
+        }
+}
 
 #[derive(Debug, Clone, ValueEnum)]
 pub enum Mode {
@@ -163,6 +214,75 @@ pub async fn download_audio(
         .await
 }
 
+/// 获取视频完整信息（标题、UP 主、简介、发布时间、分P 列表等）
+///
+/// 基本信息不需要 SESSDATA，但部分受限视频需要。
+///
+/// * `bvid`: 视频bv号
+/// * `bili_client`: 带凭证的客户端，`None` 时使用匿名客户端
+pub async fn get_video_detail(
+        bvid: &str,
+        bili_client: Option<&BiliClient>,
+) -> Result<VideoDetail> {
+        let query: [(&str, &str); 1] = [("bvid", bvid)];
+        let resp: VideoInfoResponse = match bili_client {
+                Some(client) => {
+                        client.get(VIDEO_INFO)
+                                .header("Referer", "https://www.bilibili.com")
+                                .query(&query)
+                                .send()
+                                .await?
+                                .json()
+                                .await?
+                },
+                None => {
+                        let client = Client::builder().user_agent(UA).build()?;
+                        client.get(VIDEO_INFO)
+                                .header("Referer", "https://www.bilibili.com")
+                                .query(&query)
+                                .send()
+                                .await?
+                                .json()
+                                .await?
+                },
+        };
+        resp.into_detail()
+}
+
+/// 获取视频标签（作为 `keywords` 写入元数据）
+///
+/// 失败时返回空列表，不阻塞下载流程。
+pub async fn get_video_tags(
+        bvid: &str,
+        bili_client: Option<&BiliClient>,
+) -> Vec<String> {
+        let resp: Value = match bili_client {
+                Some(client) => {
+                        match client
+                                .get(VIDEO_TAGS)
+                                .header("Referer", "https://www.bilibili.com")
+                                .query(&[("bvid", bvid)])
+                                .send()
+                                .await
+                        {
+                                Ok(r) => r.json().await.unwrap_or_default(),
+                                Err(_) => Value::Null,
+                        }
+                },
+                None => Value::Null,
+        };
+
+        resp["data"]
+                .as_array()
+                .map(|tags| {
+                        tags.iter()
+                                .filter_map(|tag| tag["tag_name"].as_str())
+                                .map(|name| name.to_string())
+                                .collect()
+                })
+                .unwrap_or_default()
+}
+
 /// 获取视频基本信息,基本信息不需要SESSDATA
 ///
 /// * `client`: reqwest请求客户端
@@ -196,27 +316,23 @@ pub async fn get_basic_video_info(
                         .await?
         };
 
-        if resp["code"].as_i64().unwrap_or(-1) != 0 {
-                return Err(Error::Normal(format!(
-                        "获取视频信息失败: {}",
-                        resp["message"]
-                )));
+        let detail = serde_json::from_value::<VideoInfoResponse>(resp)?.into_detail()?;
+
+        let pic = if detail.pic.is_empty() {
+                return Err(Error::Normal("无法获取视频封面url".into()));
+        } else {
+                detail.pic.clone()
+        };
+        if detail.cid == 0 {
+                return Err(Error::Normal("无法获取 cid".into()));
         }
+        let title = if detail.title.is_empty() {
+                "未知标题".to_string()
+        } else {
+                detail.title.clone()
+        };
 
-        let title = resp["data"]["title"]
-                .as_str()
-                .unwrap_or("未知标题")
-                .to_string();
-        let cid = resp["data"]["cid"]
-                .as_i64()
-                .ok_or_else(|| Error::Normal("无法获取 cid".into()))?
-                .to_string();
-        let pic = resp["data"]["pic"]
-                .as_str()
-                .ok_or_else(|| Error::Normal("无法获取视频封面url".into()))?
-                .to_string();
-
-        Ok((title, pic, cid))
+        Ok((title, pic, detail.cid.to_string()))
 }
 
 /// 获取收藏夹信息
