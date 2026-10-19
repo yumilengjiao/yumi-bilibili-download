@@ -11,7 +11,7 @@ homepage.workspace = true
 rust-version.workspace = true
 authors.workspace = true
 keywords.workspace = true
-categories.workspace = true
+categories = ["api-bindings"]
 
 [dependencies]
 reqwest.workspace = true

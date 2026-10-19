@@ -2,7 +2,7 @@
 
 [package]
 name = "ybd-cli"
-version = "0.1.1"
+version.workspace = true
 edition.workspace = true
 description = "Bilibili 资源下载命令行工具"
 license.workspace = true
@@ -12,14 +12,14 @@ rust-version.workspace = true
 authors.workspace = true
 keywords.workspace = true
 categories.workspace = true
-build = "build.rs"
+readme = "../README.md"
 
 [[bin]]
 name = "ybd"
 path = "src/main.rs"
 
 [dependencies]
-ybd-core = { path = "../ybd-core" }
+ybd-core.workspace = true
 clap.workspace = true
 etcetera.workspace = true
 serde.workspace = true

@@ -10,7 +10,7 @@ use ybd_core::{
         model::quality::{AudioQuality, VideoEncode, VideoQuality},
 };
 
-const VERSION: &str = concat!(env!("CARGO_PKG_VERSION"), "-", env!("GIT_HASH"));
+const VERSION: &str = concat!(env!("CARGO_PKG_VERSION"));
 
 #[derive(Parser, Debug)]
 #[command(name = "ybd", version = VERSION, about, long_about = None)]
